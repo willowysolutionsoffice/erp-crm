@@ -586,7 +586,12 @@ export async function updateEnquiryStatusDirectToEnrolled(
   }
 }
 
-export async function assignEnquiry(id: string, assignedToUserId: string): Promise<ActionResponse> {
+export async function assignEnquiry(
+  id: string,
+  assignedToUserId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<ActionResponse> {
   try {
     const user = await getCurrentUser();
 
@@ -598,14 +603,101 @@ export async function assignEnquiry(id: string, assignedToUserId: string): Promi
       };
     }
 
-    const enquiry = await prisma.enquiry.update({
-      where: { id },
-      data: { assignedToUserId },
+    // Validate dates
+    if (startDate > endDate) {
+      return {
+        success: false,
+        message: 'Start date cannot be after end date',
+      };
+    }
+
+    // Get the assigned user to get their branch
+    const assignedUser = await prisma.user.findUnique({
+      where: { id: assignedToUserId },
+      select: { id: true, branch: true },
+    });
+
+    if (!assignedUser) {
+      return {
+        success: false,
+        message: 'Assigned user not found',
+      };
+    }
+
+    if (!assignedUser.branch) {
+      return {
+        success: false,
+        message: 'Assigned user must have a branch',
+      };
+    }
+
+    // Use transaction to update enquiry and optionally create job order
+    const result = await prisma.$transaction(async (tx) => {
+      // Update enquiry assignment
+      const enquiry = await tx.enquiry.update({
+        where: { id },
+        data: { assignedToUserId },
+      });
+
+      // Try to create job order if model is available
+      try {
+        // Check if jobOrder exists on the transaction client
+        if (!('jobOrder' in tx)) {
+          console.warn('JobOrder model not available. Please run: npx prisma generate');
+          return enquiry;
+        }
+
+        // Generate job code
+        let jobCode = 'JB001';
+        const latestJobOrder = await (tx as any).jobOrder.findFirst({
+          orderBy: { createdAt: 'desc' },
+          select: { jobCode: true },
+        });
+
+        if (latestJobOrder?.jobCode) {
+          const match = latestJobOrder.jobCode.match(/JB(\d+)/);
+          if (match) {
+            const nextNumber = parseInt(match[1], 10) + 1;
+            jobCode = `JB${nextNumber.toString().padStart(3, '0')}`;
+          }
+        }
+
+        // Create job order
+        const jobOrder = await (tx as any).jobOrder.create({
+          data: {
+            jobCode,
+            managerId: assignedToUserId,
+            branchId: assignedUser.branch,
+            startDate,
+            endDate,
+          },
+        });
+
+        // Create job lead
+        await (tx as any).jobLead.create({
+          data: {
+            jobId: jobOrder.id,
+            leadId: id,
+            status: 'PENDING',
+          },
+        });
+      } catch (jobOrderError: any) {
+        // If the error is about the model not existing, log a helpful message
+        if (jobOrderError?.message?.includes('jobOrder') || jobOrderError?.message?.includes('Cannot read')) {
+          console.error('JobOrder model not available. Please run: npx prisma generate');
+        } else {
+          console.error('Failed to create job order:', jobOrderError);
+        }
+        // Continue without job order - enquiry is still assigned
+      }
+
+      return enquiry;
     });
 
     revalidatePath('/enquiries');
     revalidatePath(`/enquiries/${id}`);
-    return { success: true, data: enquiry, message: 'Enquiry assigned successfully' };
+    revalidatePath('/enquiries/job-orders');
+    return { success: true, data: result, message: 'Enquiry assigned and job order created successfully' };
   } catch (error) {
     console.error('Error assigning enquiry:', error);
     return {
@@ -616,7 +708,12 @@ export async function assignEnquiry(id: string, assignedToUserId: string): Promi
 
 }
 
-export async function bulkAssignEnquiries(ids: string[], assignedToUserId: string): Promise<ActionResponse> {
+export async function bulkAssignEnquiries(
+  ids: string[],
+  assignedToUserId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<ActionResponse> {
   try {
     const user = await getCurrentUser();
 
@@ -635,17 +732,108 @@ export async function bulkAssignEnquiries(ids: string[], assignedToUserId: strin
       };
     }
 
-    const result = await prisma.enquiry.updateMany({
-      where: {
-        id: { in: ids },
-      },
-      data: { assignedToUserId },
+    // Validate dates
+    if (startDate > endDate) {
+      return {
+        success: false,
+        message: 'Start date cannot be after end date',
+      };
+    }
+
+    // Get the assigned user to get their branch
+    const assignedUser = await prisma.user.findUnique({
+      where: { id: assignedToUserId },
+      select: { id: true, branch: true },
+    });
+
+    if (!assignedUser) {
+      return {
+        success: false,
+        message: 'Assigned user not found',
+      };
+    }
+
+    if (!assignedUser.branch) {
+      return {
+        success: false,
+        message: 'Assigned user must have a branch',
+      };
+    }
+
+    // Use transaction to update enquiries and optionally create job order
+    const result = await prisma.$transaction(async (tx) => {
+      // Update all enquiries
+      const updateResult = await tx.enquiry.updateMany({
+        where: {
+          id: { in: ids },
+        },
+        data: { assignedToUserId },
+      });
+
+      // Try to create job order if model is available
+      try {
+        // Check if jobOrder exists on the transaction client
+        if (!('jobOrder' in tx)) {
+          console.warn('JobOrder model not available. Please run: npx prisma generate');
+          return updateResult;
+        }
+
+        // Generate job code
+        let jobCode = 'JB001';
+        const latestJobOrder = await (tx as any).jobOrder.findFirst({
+          orderBy: { createdAt: 'desc' },
+          select: { jobCode: true },
+        });
+
+        if (latestJobOrder?.jobCode) {
+          const match = latestJobOrder.jobCode.match(/JB(\d+)/);
+          if (match) {
+            const nextNumber = parseInt(match[1], 10) + 1;
+            jobCode = `JB${nextNumber.toString().padStart(3, '0')}`;
+          }
+        }
+
+        // Create job order
+        const jobOrder = await (tx as any).jobOrder.create({
+          data: {
+            jobCode,
+            managerId: assignedToUserId,
+            branchId: assignedUser.branch,
+            startDate,
+            endDate,
+          },
+        });
+
+        // Create job leads for all enquiries
+        await Promise.all(
+          ids.map((enquiryId) =>
+            (tx as any).jobLead.create({
+              data: {
+                jobId: jobOrder.id,
+                leadId: enquiryId,
+                status: 'PENDING',
+              },
+            })
+          )
+        );
+      } catch (jobOrderError: any) {
+        // If the error is about the model not existing, log a helpful message
+        if (jobOrderError?.message?.includes('jobOrder') || jobOrderError?.message?.includes('Cannot read')) {
+          console.error('JobOrder model not available. Please run: npx prisma generate');
+        } else {
+          console.error('Failed to create job order:', jobOrderError);
+        }
+        // Continue without job order - enquiries are still assigned
+      }
+
+      return updateResult;
     });
 
     revalidatePath('/enquiries');
+    revalidatePath('/enquiries/job-orders');
     return { 
       success: true, 
-      message: `${result.count} enquiries assigned successfully`,
+      message: `${result.count} enquiries assigned and job order created successfully`,
       data: result 
     };
   } catch (error) {

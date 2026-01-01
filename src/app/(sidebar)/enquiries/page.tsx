@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, Eye, Edit, Trash2, MoreVertical, UserPlus, ListTodo } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, MoreVertical, UserPlus, ListTodo, Briefcase } from 'lucide-react';
 import { getEnquiries } from '@/server/actions/enquiry';
 import { ENQUIRY_STATUS_OPTIONS } from '@/constants/enquiry';
 import { toast } from 'sonner';
@@ -179,7 +179,16 @@ export default function EnquiriesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Enquiries</h1>
           <p className="text-gray-600">Manage and track all customer enquiries</p>
         </div>
-        <EnquiryFormDialog mode="create" onSuccess={refreshEnquiries} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/enquiries/job-orders')}
+          >
+            <Briefcase className="mr-2 h-4 w-4" />
+            Job Orders
+          </Button>
+          <EnquiryFormDialog mode="create" onSuccess={refreshEnquiries} />
+        </div>
       </div>
 
       {/* Filters and Search */}

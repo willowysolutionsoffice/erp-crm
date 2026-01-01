@@ -44,6 +44,7 @@ model User {
   createdEnquiryActivities EnquiryActivity[] @relation("CreatedEnquiryActivities")
   EnquiryActivity          EnquiryActivity[]
   HandledAdmissions        Admission[]       @relation("HandledAdmissions")
+  managedJobOrders         JobOrder[]        @relation("ManagedJobOrders")
 
   @@unique([email])
   @@map("user")
@@ -137,6 +138,7 @@ model Branch {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   enquiries Enquiry[]
+  jobOrders JobOrder[]
 
   @@map("branch")
 }
@@ -233,6 +235,11 @@ enum ActivityType {
   ENROLLMENT_DIRECT
 }
 
+enum JobLeadStatus {
+  PENDING
+  CLOSED
+}
+
 model Enquiry {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
   candidateName   String
@@ -272,6 +279,7 @@ model Enquiry {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   admissions Admission[]
+  jobLeads   JobLead[]
 
   @@map("enquiry")
 }
@@ -525,4 +533,30 @@ model ServiceBillItem {
   updatedAt DateTime @updatedAt
 
   @@map("service_bill_item")
+}
+
+model JobOrder {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  jobCode    String    @unique
+  managerId  String
+  manager    User      @relation("ManagedJobOrders", fields: [managerId], references: [id])
+  branchId   String    @db.ObjectId
+  branch     Branch    @relation(fields: [branchId], references: [id])
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime  @default(now())
+  jobLeads   JobLead[]
+
+  @@map("job_order")
+}
+
+model JobLead {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  jobId      String        @db.ObjectId
+  job        JobOrder      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status     JobLeadStatus @default(PENDING)
+  leadId     String        @db.ObjectId
+  lead       Enquiry       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("job_lead")
 }

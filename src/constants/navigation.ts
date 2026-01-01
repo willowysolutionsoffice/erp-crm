@@ -9,7 +9,8 @@ import {
   IconPhoneCall,
   IconUserPlus,
   IconUsers,
-  IconFileDollar
+  IconFileDollar,
+  IconBriefcase
 } from '@tabler/icons-react';
 import type { SidebarData } from '@/types/navigation';
 import { APP_CONFIG } from '@/config/app';
@@ -31,6 +32,11 @@ export const SIDEBAR_DATA: SidebarData = {
       title: 'Enquiries',
       url: '/enquiries',
       icon: IconUsers,
+    },
+    {
+      title: 'Job Orders',
+      url: '/enquiries/job-orders',
+      icon: IconBriefcase,
     },
     {
       title: 'Follow-ups',
