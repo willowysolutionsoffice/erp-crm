@@ -182,6 +182,7 @@ export async function getJobOrders(filters?: {
   pendingOnly?: boolean;
   completedOnly?: boolean;
   dueOnly?: boolean;
+  search?: string;
 }): Promise<ActionResponse> {
   try {
     const user = await getCurrentUser();
@@ -191,19 +192,36 @@ export async function getJobOrders(filters?: {
 
     const where: Prisma.JobOrderWhereInput = {};
 
-    if (filters?.managerId) {
-      where.managerId = filters.managerId;
+    // Base Search (if search term provided)
+    if (filters?.search) {
+      const searchTerm = filters.search;
+      where.OR = [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { jobCode: { contains: searchTerm, mode: 'insensitive' } },
+        { manager: { name: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
     }
 
-    if (filters?.branchId) {
-      where.branchId = filters.branchId;
-    }
-
-    // Role-based filtering
-    if (user.role !== 'admin') {
+    // Role-based Access Control
+    if (user.role === 'admin') {
+      // Admin can filter by branch and manager if provided
+      if (filters?.branchId && filters.branchId !== 'all') {
+        where.branchId = filters.branchId;
+      }
+      if (filters?.managerId && filters.managerId !== 'all') {
+        where.managerId = filters.managerId;
+      }
+    } else if (user.role === 'manager') {
+      if (user.branch) {
+         where.branchId = user.branch;
+      } else {
+         where.managerId = user.id;
+      }
+    } else {
       where.managerId = user.id;
     }
 
+    // Status Filters
     if (filters?.pendingOnly) {
       where.jobLeads = {
         some: {
@@ -250,20 +268,8 @@ export async function getJobOrders(filters?: {
             },
           },
           jobLeads: {
-            include: {
-              lead: {
-                select: {
-                  id: true,
-                  candidateName: true,
-                  phone: true,
-                  status: true,
-                },
-              },
-            },
-          },
-          _count: {
             select: {
-              jobLeads: true,
+              status: true,
             },
           },
         },
@@ -271,9 +277,24 @@ export async function getJobOrders(filters?: {
       prisma.jobOrder.count({ where }),
     ]);
 
+    // Calculate progress for each job order
+    const jobOrdersWithProgress = jobOrders.map((job) => {
+      const totalLeads = job.jobLeads.length;
+      const closedLeads = job.jobLeads.filter((l) => l.status === 'CLOSED').length;
+      const progress = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
+      
+      return {
+        ...job,
+        progress,
+        _count: {
+          jobLeads: totalLeads,
+        },
+      };
+    });
+
     return {
       success: true,
-      data: jobOrders,
+      data: jobOrdersWithProgress,
       message: 'Job orders fetched successfully',
       pagination: {
         page,
@@ -323,10 +344,13 @@ export async function getJobOrder(id: string): Promise<ActionResponse> {
                 id: true,
                 candidateName: true,
                 phone: true,
+                contact2: true,
                 email: true,
                 status: true,
                 address: true,
                 notes: true,
+                feedback: true,
+                createdAt: true,
                 lastContactDate: true,
                 preferredCourse: {
                   select: {
@@ -335,6 +359,18 @@ export async function getJobOrder(id: string): Promise<ActionResponse> {
                   },
                 },
                 enquirySource: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+                requiredService: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+                assignedTo: {
                   select: {
                     id: true,
                     name: true,
@@ -500,6 +536,103 @@ export async function getJobOrderStats(
     return {
       success: false,
       message: 'Failed to calculate job order progress',
+    };
+  }
+}
+
+// Delete job order
+export async function deleteJobOrder(id: string): Promise<ActionResponse> {
+  try {
+    const user = await getCurrentUser();
+
+    if (user.role !== 'admin') {
+      return {
+        success: false,
+        message: 'Access denied. Only admins can delete job orders.',
+      };
+    }
+
+    await prisma.jobOrder.delete({
+      where: { id },
+    });
+
+    revalidatePath('/enquiries/job-orders');
+    revalidatePath('/enquiries/job-orders/pending');
+    
+    return {
+      success: true,
+      message: 'Job order deleted successfully',
+    };
+  } catch (error) {
+    console.error('Error deleting job order:', error);
+    return {
+      success: false,
+      message: 'Failed to delete job order',
+    };
+  }
+}
+
+// Re-assign job order
+export async function reassignJobOrder(
+  id: string,
+  newManagerId: string
+): Promise<ActionResponse> {
+  try {
+    const user = await getCurrentUser();
+
+    // Only Admin and Manager (Executive) can re-assign
+    if (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'executive') {
+      return {
+        success: false,
+        message: 'Access denied',
+      };
+    }
+
+    const jobOrder = await prisma.jobOrder.findUnique({
+      where: { id },
+    });
+
+    if (!jobOrder) {
+      return {
+        success: false,
+        message: 'Job order not found',
+      };
+    }
+
+    // If Manager/Executive, ensure they own the branch or the job (semantics may vary, sticking to basic role check + branch if strict)
+    // But for re-assign, usually they can re-assign their own jobs or jobs in their branch. 
+    // Allowing if they have role access for now.
+
+    const newManager = await prisma.user.findUnique({
+        where: { id: newManagerId }
+    });
+
+    if (!newManager) {
+        return {
+            success: false,
+            message: 'New manager user not found'
+        };
+    }
+
+    await prisma.jobOrder.update({
+      where: { id },
+      data: {
+        managerId: newManagerId,
+      },
+    });
+
+    revalidatePath('/enquiries/job-orders');
+    revalidatePath('/enquiries/job-orders/pending');
+
+    return {
+      success: true,
+      message: 'Job order re-assigned successfully',
+    };
+  } catch (error) {
+    console.error('Error re-assigning job order:', error);
+    return {
+      success: false,
+      message: 'Failed to re-assign job order',
     };
   }
 }

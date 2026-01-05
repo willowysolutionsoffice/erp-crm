@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, use, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,16 +73,27 @@ interface JobOrder {
       id: string;
       candidateName: string;
       phone: string;
+      contact2: string | null;
       email: string | null;
       status: string;
       address: string | null;
       notes: string | null;
+      feedback: string | null;
       lastContactDate: Date | null;
+      createdAt: Date;
       preferredCourse: {
         id: string;
         name: string;
       } | null;
       enquirySource: {
+        id: string;
+        name: string;
+      } | null;
+      requiredService: {
+        id: string;
+        name: string;
+      } | null;
+      assignedTo: {
         id: string;
         name: string;
       } | null;
@@ -315,7 +326,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                 <TableHead className="w-[50px]"></TableHead>
                 <TableHead>Candidate</TableHead>
                 <TableHead>Contact Info</TableHead>
-                <TableHead>Course & Source</TableHead>
+                <TableHead>Course & Service</TableHead>
                 <TableHead>Last Contact</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -323,8 +334,8 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
             </TableHeader>
             <TableBody>
               {jobOrder.jobLeads.map((jobLead) => (
-                <>
-                  <TableRow key={jobLead.id} className="group hover:bg-muted/30 transition-colors">
+                <Fragment key={jobLead.id}>
+                  <TableRow className="group hover:bg-muted/30 transition-colors">
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleRow(jobLead.id)}>
                         {expandedRows.has(jobLead.id) ? (
@@ -338,6 +349,9 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                       <div className="font-medium text-foreground">{jobLead.lead.candidateName}</div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{jobLead.lead.status}</Badge>
+                         {jobLead.lead.assignedTo && (
+                           <span className="text-[10px]" title="Original Assignee">({jobLead.lead.assignedTo.name})</span>
+                         )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -346,6 +360,12 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                             <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                             {jobLead.lead.phone}
                           </div>
+                          {jobLead.lead.contact2 && (
+                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {jobLead.lead.contact2}
+                             </div>
+                          )}
                           {jobLead.lead.email && (
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Mail className="h-3 w-3" />
@@ -360,6 +380,9 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                            <div className="font-medium text-sm">{jobLead.lead.preferredCourse.name}</div>
                         ) : (
                            <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                        {jobLead.lead.requiredService && (
+                            <div className="text-xs text-muted-foreground">Service: {jobLead.lead.requiredService.name}</div>
                         )}
                         {jobLead.lead.enquirySource && (
                            <div className="text-xs text-muted-foreground">Via {jobLead.lead.enquirySource.name}</div>
@@ -420,23 +443,38 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                     <TableRow className="bg-muted/20">
                       <TableCell colSpan={7} className="p-0 border-b">
                           <div className="p-4 pl-14 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
-                             <div className="space-y-2">
-                                <h4 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
-                                   <MessageSquare className="h-3 w-3" />
-                                   Notes & Feedback
-                                </h4>
-                                <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[80px]">
-                                   {jobLead.lead.notes ? (
-                                     <p className="text-foreground/90 whitespace-pre-wrap">{jobLead.lead.notes}</p>
-                                   ) : (
-                                     <span className="text-muted-foreground italic text-xs">No notes recorded for this candidate.</span>
-                                   )}
+                             <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
+                                        <MessageSquare className="h-3 w-3" />
+                                        Notes
+                                    </h4>
+                                    <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[60px]">
+                                        {jobLead.lead.notes ? (
+                                        <p className="text-foreground/90 whitespace-pre-wrap">{jobLead.lead.notes}</p>
+                                        ) : (
+                                        <span className="text-muted-foreground italic text-xs">No notes recorded.</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
+                                        <MessageSquare className="h-3 w-3" />
+                                        Feedback
+                                    </h4>
+                                    <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[60px]">
+                                        {jobLead.lead.feedback ? (
+                                        <p className="text-foreground/90 whitespace-pre-wrap">{jobLead.lead.feedback}</p>
+                                        ) : (
+                                        <span className="text-muted-foreground italic text-xs">No feedback recorded.</span>
+                                        )}
+                                    </div>
                                 </div>
                              </div>
                              <div className="space-y-2">
                                 <h4 className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
                                    <MapPin className="h-3 w-3" />
-                                   Address & Additional Info
+                                   Address & Meta Info
                                 </h4>
                                 <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[80px]">
                                   {jobLead.lead.address ? (
@@ -445,10 +483,18 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                                      <span className="text-muted-foreground italic text-xs">No address provided.</span>
                                   )}
                                   <Separator className="my-2" />
-                                  <div className="flex gap-4 text-xs">
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
                                      <div>
+                                        <span className="text-muted-foreground">Original Assignee: </span>
+                                        <span className="font-medium">{jobLead.lead.assignedTo?.name || 'Unassigned'}</span>
+                                     </div>
+                                     <div>
+                                        <span className="text-muted-foreground">Created On: </span>
+                                        <span className="font-medium">{format(new Date(jobLead.lead.createdAt), 'MMM dd, yyyy')}</span>
+                                     </div>
+                                     <div className="col-span-2">
                                         <span className="text-muted-foreground">System ID: </span>
-                                        <span className="font-mono">{jobLead.lead.id.substring(0, 8)}...</span>
+                                        <span className="font-mono">{jobLead.lead.id}</span>
                                      </div>
                                   </div>
                                 </div>
@@ -457,7 +503,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))}
               {jobOrder.jobLeads.length === 0 && (
                  <TableRow>
