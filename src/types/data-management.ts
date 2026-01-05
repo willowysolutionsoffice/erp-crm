@@ -59,6 +59,7 @@ export interface User {
   name: string;
   email: string;
   role?: Role;
+  branch?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

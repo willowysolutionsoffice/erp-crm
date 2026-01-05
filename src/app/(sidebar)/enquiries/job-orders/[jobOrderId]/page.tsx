@@ -44,7 +44,10 @@ import { Separator } from '@/components/ui/separator';
 
 interface JobOrder {
   id: string;
-  jobCode: string;
+  name: string;
+  description?: string | null;
+  remarks?: string | null;
+  jobCode?: string | null;
   managerId: string;
   branchId: string;
   startDate: Date;
@@ -198,7 +201,12 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">{jobOrder.jobCode}</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">{jobOrder.name}</h1>
+                <p className="text-xs text-muted-foreground">
+                  {jobOrder.jobCode || `ID: ${jobOrder.id}`}
+                </p>
+              </div>
               <Badge variant={pendingCount > 0 ? "secondary" : "default"} className="text-xs px-2 py-0.5">
                 {pendingCount > 0 ? 'In Progress' : 'Completed'}
               </Badge>
@@ -217,6 +225,16 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                  <span>{format(new Date(jobOrder.startDate), 'MMM dd, yyyy')} - {format(new Date(jobOrder.endDate), 'MMM dd, yyyy')}</span>
                </div>
             </div>
+            {(jobOrder.description || jobOrder.remarks) && (
+              <div className="mt-3 space-y-1 text-sm">
+                {jobOrder.description && (
+                  <p className="text-foreground/80">{jobOrder.description}</p>
+                )}
+                {jobOrder.remarks && (
+                  <p className="text-muted-foreground">Remark: {jobOrder.remarks}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

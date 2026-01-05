@@ -537,7 +537,9 @@ model ServiceBillItem {
 
 model JobOrder {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  jobCode    String    @unique
+  name       String
+  description String?
+  remarks    String?
   managerId  String
   manager    User      @relation("ManagedJobOrders", fields: [managerId], references: [id])
   branchId   String    @db.ObjectId

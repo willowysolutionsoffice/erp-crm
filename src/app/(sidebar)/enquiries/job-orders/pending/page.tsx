@@ -28,7 +28,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface JobOrder {
   id: string;
-  jobCode: string;
+  name: string;
+  description?: string | null;
+  remarks?: string | null;
+  jobCode?: string | null;
   managerId: string;
   branchId: string;
   startDate: Date;
@@ -97,12 +100,15 @@ export default function PendingJobOrdersPage() {
   }, [currentPage]);
 
   // Filter job orders by search term
+  const searchTerm = search.toLowerCase();
+
   const filteredJobOrders = search
     ? jobOrders.filter(
         (jobOrder) =>
-          jobOrder.jobCode.toLowerCase().includes(search.toLowerCase()) ||
-          jobOrder.manager.name.toLowerCase().includes(search.toLowerCase()) ||
-          jobOrder.branch.name.toLowerCase().includes(search.toLowerCase())
+          jobOrder.name.toLowerCase().includes(searchTerm) ||
+          (jobOrder.jobCode?.toLowerCase().includes(searchTerm) ?? false) ||
+          jobOrder.manager.name.toLowerCase().includes(searchTerm) ||
+          jobOrder.branch.name.toLowerCase().includes(searchTerm)
       )
     : jobOrders;
 
@@ -138,13 +144,13 @@ export default function PendingJobOrdersPage() {
       <Card>
         <CardHeader>
           <CardTitle>Search</CardTitle>
-          <CardDescription>Search job orders by code, manager, or branch</CardDescription>
+          <CardDescription>Search job orders by name, manager, or branch</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by job code, manager, or branch..."
+              placeholder="Search by job name, manager, or branch..."
               className="pl-8"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -183,7 +189,15 @@ export default function PendingJobOrdersPage() {
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-semibold text-lg">{jobOrder.jobCode}</h3>
+                          <h3 className="font-semibold text-lg">{jobOrder.name}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {jobOrder.jobCode || `ID: ${jobOrder.id.slice(0, 8)}...`}
+                          </p>
+                          {jobOrder.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {jobOrder.description}
+                            </p>
+                          )}
                           <p className="text-sm text-muted-foreground">
                             {jobOrder.manager.name}
                           </p>
@@ -230,7 +244,7 @@ export default function PendingJobOrdersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Job Code</TableHead>
+                    <TableHead>Job Name</TableHead>
                     <TableHead>Manager</TableHead>
                     <TableHead>Branch</TableHead>
                     <TableHead>Start Date</TableHead>
@@ -245,7 +259,19 @@ export default function PendingJobOrdersPage() {
                     const counts = getStatusCounts(jobOrder);
                     return (
                       <TableRow key={jobOrder.id}>
-                        <TableCell className="font-medium">{jobOrder.jobCode}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-semibold">{jobOrder.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {jobOrder.jobCode || `ID: ${jobOrder.id.slice(0, 8)}...`}
+                            </span>
+                            {jobOrder.description && (
+                              <span className="text-xs text-muted-foreground line-clamp-1">
+                                {jobOrder.description}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{jobOrder.manager.name}</p>

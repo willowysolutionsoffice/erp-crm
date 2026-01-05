@@ -9,17 +9,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { getUsers, assignEnquiry, bulkAssignEnquiries } from '@/server/actions/enquiry';
-import { User } from '@/types/data-management';
+import { getAllBranches } from '@/server/actions/data-management';
+import { Branch, User } from '@/types/data-management';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AssignEnquiryDialogProps {
   open: boolean;
@@ -40,29 +49,65 @@ export function AssignEnquiryDialog({
   onSuccess,
   candidateName,
 }: AssignEnquiryDialogProps) {
-  const [users, setUsers] = useState<User[]>([]);
+  type AssignableUser = User & { branch?: string | null };
+
+  const [users, setUsers] = useState<AssignableUser[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [jobName, setJobName] = useState('');
+  const [description, setDescription] = useState('');
+  const [remarks, setRemarks] = useState('');
 
   useEffect(() => {
     if (open) {
-      fetchUsers();
-      // Reset form when dialog opens
-      setSelectedUserId(null);
-      setStartDate(undefined);
-      setEndDate(undefined);
+      initializeDialog();
     }
   }, [open]);
 
-  const fetchUsers = async () => {
+  const initializeDialog = async () => {
+    setSelectedUserId(null);
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setJobName('');
+    setDescription('');
+    setRemarks('');
+    await fetchBranches();
+  };
+
+  const fetchBranches = async () => {
+    setIsLoadingBranches(true);
+    try {
+      const result = await getAllBranches();
+      if (result.success) {
+        const branchList = (result.data as Branch[]) || [];
+        setBranches(branchList);
+        const defaultBranchId = branchList[0]?.id || '';
+        setSelectedBranchId(defaultBranchId);
+        if (!defaultBranchId) {
+          setUsers([]);
+        }
+      } else {
+        toast.error(result.message || 'Failed to fetch branches');
+      }
+    } catch {
+      toast.error('Failed to fetch branches');
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  };
+
+  const fetchUsers = async (branchId?: string) => {
     setIsLoadingUsers(true);
     try {
-      const result = await getUsers();
+      const result = await getUsers(branchId);
       if (result.success) {
-        setUsers((result.data as User[]) || []);
+        setUsers((result.data as AssignableUser[]) || []);
       } else {
         toast.error(result.message || 'Failed to fetch users');
       }
@@ -73,11 +118,43 @@ export function AssignEnquiryDialog({
     }
   };
 
+  useEffect(() => {
+    if (open && selectedBranchId) {
+      fetchUsers(selectedBranchId);
+    }
+  }, [open, selectedBranchId]);
+
   const handleSelectUser = (userId: string) => {
     setSelectedUserId(userId);
   };
 
+  // Ensure admin/manager are never listed (extra safety on top of server-side filter)
+  const availableUsers = users.filter((user) => {
+    const roleName =
+      typeof (user as any).role === 'string'
+        ? ((user as any).role as string)
+        : (user as any).role?.name;
+
+    const nameLower = (user.name || '').toLowerCase();
+    const roleLower = (roleName || '').toLowerCase();
+
+    if (roleLower === 'admin' || roleLower === 'manager') return false;
+    if (nameLower === 'admin' || nameLower === 'manager') return false;
+
+    return true;
+  });
+
   const handleAssignUser = async () => {
+    if (!selectedBranchId) {
+      toast.error('Please select a branch');
+      return;
+    }
+
+    if (!jobName.trim()) {
+      toast.error('Please enter a job name');
+      return;
+    }
+
     if (!selectedUserId) {
       toast.error('Please select a user');
       return;
@@ -104,10 +181,28 @@ export function AssignEnquiryDialog({
       
       if (enquiryIds && enquiryIds.length > 0) {
         // Bulk assignment
-        result = await bulkAssignEnquiries(enquiryIds, selectedUserId, startDate, endDate);
+        result = await bulkAssignEnquiries(
+          enquiryIds,
+          selectedUserId,
+          startDate,
+          endDate,
+          selectedBranchId,
+          jobName.trim(),
+          description || null,
+          remarks || null
+        );
       } else if (enquiryId) {
         // Single assignment
-        result = await assignEnquiry(enquiryId, selectedUserId, startDate, endDate);
+        result = await assignEnquiry(
+          enquiryId,
+          selectedUserId,
+          startDate,
+          endDate,
+          selectedBranchId,
+          jobName.trim(),
+          description || null,
+          remarks || null
+        );
       } else {
         toast.error('No enquiry selected');
         setIsAssigning(false);
@@ -146,6 +241,94 @@ export function AssignEnquiryDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Job Details */}
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="job-name">Job Name *</Label>
+              <Input
+                id="job-name"
+                placeholder="Enter job name"
+                value={jobName}
+                onChange={(e) => setJobName(e.target.value)}
+                disabled={isAssigning}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="job-description">Description (optional)</Label>
+              <Textarea
+                id="job-description"
+                placeholder="Add a short description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isAssigning}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          {/* Branch */}
+          <div className="space-y-2">
+            <Label htmlFor="branch">Branch *</Label>
+            <Select
+              value={selectedBranchId}
+              onValueChange={(value) => {
+                setSelectedBranchId(value);
+                setSelectedUserId(null);
+              }}
+              disabled={isAssigning || isLoadingBranches || branches.length === 0}
+            >
+              <SelectTrigger id="branch">
+                <SelectValue
+                  placeholder={isLoadingBranches ? 'Loading branches...' : 'Select branch'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* User */}
+          <div className="space-y-2">
+            <Label htmlFor="assignee">User *</Label>
+            <Select
+              value={selectedUserId ?? ''}
+              onValueChange={(value) => setSelectedUserId(value)}
+              disabled={
+                isAssigning ||
+                isLoadingUsers ||
+                !selectedBranchId ||
+                availableUsers.length === 0
+              }
+            >
+              <SelectTrigger id="assignee">
+                <SelectValue
+                  placeholder={
+                    isLoadingUsers
+                      ? 'Loading users...'
+                      : !selectedBranchId
+                        ? 'Select a branch first'
+                        : availableUsers.length === 0
+                          ? 'No users for this branch'
+                          : 'Select user'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {availableUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.name}{' '}
+                    <span className="text-xs text-muted-foreground">({user.email})</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Date Selection */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -206,49 +389,18 @@ export function AssignEnquiryDialog({
             </div>
           </div>
 
-          {/* User Selection */}
-          {isLoadingUsers ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : users.length > 0 ? (
-            <ScrollArea className="h-[300px] pr-4">
-              <div className="space-y-2">
-                {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors hover:bg-muted",
-                      selectedUserId === user.id ? "bg-muted border-primary/50" : "bg-card",
-                      currentAssigneeId === user.id && "ring-2 ring-primary/20"
-                    )}
-                    onClick={() => handleSelectUser(user.id)}
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {currentAssigneeId === user.id && (
-                        <Badge variant="secondary" className="text-xs">
-                          Current
-                        </Badge>
-                      )}
-                      {user.role && (
-                        <Badge variant="outline" className="text-[10px] px-2 py-0 h-5">
-                          {user.role.name}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          ) : (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              No users found to assign.
-            </div>
-          )}
+          {/* Remarks */}
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Remarks (optional)</Label>
+            <Textarea
+              id="remarks"
+              placeholder="Add any remark"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              disabled={isAssigning}
+              rows={3}
+            />
+          </div>
 
           {/* Action Button */}
           <div className="flex justify-end gap-2 pt-2">
@@ -261,7 +413,14 @@ export function AssignEnquiryDialog({
             </Button>
             <Button
               onClick={handleAssignUser}
-              disabled={isAssigning || !selectedUserId || !startDate || !endDate}
+              disabled={
+                isAssigning ||
+                !selectedUserId ||
+                !startDate ||
+                !endDate ||
+                !selectedBranchId ||
+                !jobName.trim()
+              }
             >
               {isAssigning ? (
                 <>

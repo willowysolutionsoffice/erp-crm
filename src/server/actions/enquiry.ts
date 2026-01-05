@@ -591,7 +591,11 @@ export async function assignEnquiry(
   id: string,
   assignedToUserId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  branchId: string,
+  name: string,
+  description?: string | null,
+  remarks?: string | null
 ): Promise<ActionResponse> {
   try {
     const user = await getCurrentUser();
@@ -604,11 +608,30 @@ export async function assignEnquiry(
       };
     }
 
+    if (!name?.trim()) {
+      return {
+        success: false,
+        message: 'Job name is required',
+      };
+    }
+
     // Validate dates
     if (startDate > endDate) {
       return {
         success: false,
         message: 'Start date cannot be after end date',
+      };
+    }
+
+    // Validate branch
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+    });
+
+    if (!branch) {
+      return {
+        success: false,
+        message: 'Branch not found',
       };
     }
 
@@ -632,6 +655,13 @@ export async function assignEnquiry(
       };
     }
 
+    if (assignedUser.branch !== branchId) {
+      return {
+        success: false,
+        message: 'Selected user does not belong to the chosen branch',
+      };
+    }
+
     // Use transaction to update enquiry and optionally create job order
     const result = await prisma.$transaction(async (tx) => {
       // Update enquiry assignment
@@ -640,27 +670,14 @@ export async function assignEnquiry(
         data: { assignedToUserId },
       });
 
-      // Generate job code
-      let jobCode = 'JB001';
-      const latestJobOrder = await tx.jobOrder.findFirst({
-        orderBy: { createdAt: 'desc' },
-        select: { jobCode: true },
-      });
-
-      if (latestJobOrder?.jobCode) {
-        const match = latestJobOrder.jobCode.match(/JB(\d+)/);
-        if (match) {
-          const nextNumber = parseInt(match[1], 10) + 1;
-          jobCode = `JB${nextNumber.toString().padStart(3, '0')}`;
-        }
-      }
-
       // Create job order
       const jobOrder = await tx.jobOrder.create({
         data: {
-          jobCode,
+          name,
+          description,
+          remarks,
           managerId: assignedToUserId,
-          branchId: assignedUser.branch!, // We verified this exists above
+          branchId,
           startDate,
           endDate,
         },
@@ -681,6 +698,9 @@ export async function assignEnquiry(
     revalidatePath('/enquiries');
     revalidatePath(`/enquiries/${id}`);
     revalidatePath('/enquiries/job-orders');
+    revalidatePath('/enquiries/job-orders/pending');
+    revalidatePath('/enquiries/job-orders/completed');
+    revalidatePath('/enquiries/job-orders/due');
     return { success: true, data: result, message: 'Enquiry assigned and job order created successfully' };
   } catch (error) {
     console.error('Error assigning enquiry:', error);
@@ -696,7 +716,11 @@ export async function bulkAssignEnquiries(
   ids: string[],
   assignedToUserId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  branchId: string,
+  name: string,
+  description?: string | null,
+  remarks?: string | null
 ): Promise<ActionResponse> {
   try {
     const user = await getCurrentUser();
@@ -716,11 +740,30 @@ export async function bulkAssignEnquiries(
       };
     }
 
+    if (!name?.trim()) {
+      return {
+        success: false,
+        message: 'Job name is required',
+      };
+    }
+
     // Validate dates
     if (startDate > endDate) {
       return {
         success: false,
         message: 'Start date cannot be after end date',
+      };
+    }
+
+    // Validate branch
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+    });
+
+    if (!branch) {
+      return {
+        success: false,
+        message: 'Branch not found',
       };
     }
 
@@ -744,6 +787,13 @@ export async function bulkAssignEnquiries(
       };
     }
 
+    if (assignedUser.branch !== branchId) {
+      return {
+        success: false,
+        message: 'Selected user does not belong to the chosen branch',
+      };
+    }
+
     // Use transaction to update enquiries and optionally create job order
     const result = await prisma.$transaction(async (tx) => {
       // Update all enquiries
@@ -754,27 +804,14 @@ export async function bulkAssignEnquiries(
         data: { assignedToUserId },
       });
 
-      // Generate job code
-      let jobCode = 'JB001';
-      const latestJobOrder = await tx.jobOrder.findFirst({
-        orderBy: { createdAt: 'desc' },
-        select: { jobCode: true },
-      });
-
-      if (latestJobOrder?.jobCode) {
-        const match = latestJobOrder.jobCode.match(/JB(\d+)/);
-        if (match) {
-          const nextNumber = parseInt(match[1], 10) + 1;
-          jobCode = `JB${nextNumber.toString().padStart(3, '0')}`;
-        }
-      }
-
       // Create job order
       const jobOrder = await tx.jobOrder.create({
         data: {
-          jobCode,
+          name,
+          description,
+          remarks,
           managerId: assignedToUserId,
-          branchId: assignedUser.branch!, // We verified this exists above
+          branchId,
           startDate,
           endDate,
         },
@@ -798,6 +835,9 @@ export async function bulkAssignEnquiries(
 
     revalidatePath('/enquiries');
     revalidatePath('/enquiries/job-orders');
+    revalidatePath('/enquiries/job-orders/pending');
+    revalidatePath('/enquiries/job-orders/completed');
+    revalidatePath('/enquiries/job-orders/due');
     return { 
       success: true, 
       message: `${result.count} enquiries assigned and job order created successfully`,
@@ -841,14 +881,28 @@ export async function deleteEnquiry(id: string): Promise<ActionResponse> {
 }
 
 // Helper function to get users for assignment
-export async function getUsers(): Promise<ActionResponse> {
+export async function getUsers(branchId?: string): Promise<ActionResponse> {
   try {
+    const where: Prisma.UserWhereInput = {
+      NOT: {
+        role: {
+          in: ['admin', 'manager'],
+        },
+      },
+    };
+
+    if (branchId) {
+      where.branch = branchId;
+    }
+
     const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        branch: true,
       },
       orderBy: { name: 'asc' },
     });

@@ -32,36 +32,30 @@ async function getCurrentUser() {
   return session.user;
 }
 
-// Generate unique job code starting with JB
-async function generateJobCode(): Promise<string> {
-  // Get the latest job order to determine the next number
-  const latestJobOrder = await prisma.jobOrder.findFirst({
-    orderBy: { createdAt: 'desc' },
-    select: { jobCode: true },
-  });
-
-  let nextNumber = 1;
-  if (latestJobOrder?.jobCode) {
-    // Extract number from job code (e.g., "JB001" -> 1, "JB123" -> 123)
-    const match = latestJobOrder.jobCode.match(/JB(\d+)/);
-    if (match) {
-      nextNumber = parseInt(match[1], 10) + 1;
-    }
-  }
-
-  // Format with leading zeros (e.g., JB001, JB002, etc.)
-  return `JB${nextNumber.toString().padStart(3, '0')}`;
+interface CreateJobOrderInput {
+  managerId: string;
+  branchId: string;
+  startDate: Date;
+  endDate: Date;
+  enquiryIds: string[];
+  name: string;
+  description?: string | null;
+  remarks?: string | null;
 }
 
 // Create job order with job leads
-export async function createJobOrder(
-  managerId: string,
-  branchId: string,
-  startDate: Date,
-  endDate: Date,
-  enquiryIds: string[]
-): Promise<ActionResponse> {
+export async function createJobOrder(input: CreateJobOrderInput): Promise<ActionResponse> {
   try {
+    const { managerId, branchId, startDate, endDate, enquiryIds, name, description, remarks } =
+      input;
+
+    if (!name?.trim()) {
+      return {
+        success: false,
+        message: 'Job name is required',
+      };
+    }
+
     // Validate dates
     if (startDate > endDate) {
       return {
@@ -117,15 +111,14 @@ export async function createJobOrder(
       };
     }
 
-    // Generate job code
-    const jobCode = await generateJobCode();
-
     // Create job order with job leads in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create job order
       const jobOrder = await tx.jobOrder.create({
         data: {
-          jobCode,
+          name,
+          description,
+          remarks,
           managerId,
           branchId: finalBranchId,
           startDate,
