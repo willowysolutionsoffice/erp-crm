@@ -21,9 +21,35 @@ import { User } from '@prisma/client';
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user?: User;
+  counts?: {
+    enquiries?: number;
+    jobOrdersPending?: number;
+    followUps?: number;
+  };
 }
 
-export function AppSidebar({ user, ...props }: AppSidebarProps) {
+export function AppSidebar({ user, counts, ...props }: AppSidebarProps) {
+  const navMainWithCounts = SIDEBAR_DATA.navMain.map((item) => {
+    if (item.title === 'Enquiries' && counts?.enquiries) {
+      return { ...item, badge: counts.enquiries };
+    }
+    if (item.title === 'Job Orders') {
+      return {
+        ...item,
+        items: item.items?.map((subItem) => {
+          if (subItem.title === 'Pending' && counts?.jobOrdersPending) {
+            return { ...subItem, badge: counts.jobOrdersPending };
+          }
+          return subItem;
+        }),
+      };
+    }
+    if (item.title === 'Follow-ups' && counts?.followUps) {
+      return { ...item, badge: counts.followUps };
+    }
+    return item;
+  });
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -39,7 +65,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={SIDEBAR_DATA.navMain} />
+        <NavMain items={navMainWithCounts} />
         {user?.role === 'admin' && <NavAdmin items={SIDEBAR_DATA.admin} />}
         {user?.role !== 'telecaller' && (
           <NavSecondary items={SIDEBAR_DATA.navSecondary} className="mt-auto" />

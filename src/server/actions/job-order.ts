@@ -213,9 +213,9 @@ export async function getJobOrders(filters?: {
       }
     } else if (user.role === 'manager') {
       if (user.branch) {
-         where.branchId = user.branch;
+        where.branchId = user.branch;
       } else {
-         where.managerId = user.id;
+        where.managerId = user.id;
       }
     } else {
       where.managerId = user.id;
@@ -282,7 +282,7 @@ export async function getJobOrders(filters?: {
       const totalLeads = job.jobLeads.length;
       const closedLeads = job.jobLeads.filter((l) => l.status === 'CLOSED').length;
       const progress = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
-      
+
       return {
         ...job,
         progress,
@@ -398,11 +398,32 @@ export async function getJobOrder(id: string): Promise<ActionResponse> {
     }
 
     // Role-based access control
-    if (user.role !== 'admin' && jobOrder.managerId !== user.id) {
-      return {
-        success: false,
-        message: 'Access denied',
-      };
+    if (user.role === 'admin') {
+      // Admin has full access
+    } else if (user.role === 'manager') {
+      // Manager has access if job is in their branch OR they manage it
+      if (user.branch && jobOrder.branchId !== user.branch) {
+        if (jobOrder.managerId !== user.id) {
+          return {
+            success: false,
+            message: 'Access denied',
+          };
+        }
+      } else if (!user.branch && jobOrder.managerId !== user.id) {
+        // Manager without branch can only see own jobs
+        return {
+          success: false,
+          message: 'Access denied',
+        };
+      }
+    } else {
+      // Other roles: owner only
+      if (jobOrder.managerId !== user.id) {
+        return {
+          success: false,
+          message: 'Access denied',
+        };
+      }
     }
 
     return {
@@ -558,7 +579,7 @@ export async function deleteJobOrder(id: string): Promise<ActionResponse> {
 
     revalidatePath('/enquiries/job-orders');
     revalidatePath('/enquiries/job-orders/pending');
-    
+
     return {
       success: true,
       message: 'Job order deleted successfully',
@@ -604,14 +625,14 @@ export async function reassignJobOrder(
     // Allowing if they have role access for now.
 
     const newManager = await prisma.user.findUnique({
-        where: { id: newManagerId }
+      where: { id: newManagerId }
     });
 
     if (!newManager) {
-        return {
-            success: false,
-            message: 'New manager user not found'
-        };
+      return {
+        success: false,
+        message: 'New manager user not found'
+      };
     }
 
     await prisma.jobOrder.update({

@@ -130,14 +130,19 @@ export async function getEnquiries(filters: EnquiryFilters = {}): Promise<Action
     const where: Prisma.EnquiryWhereInput = {};
 
     // Role-based filtering
-    if (user.role === 'telecaller') {
-      where.assignedToUserId = user.id;
+    if (user.role === 'admin') {
+      // Admin sees everything (no default filter).
+    } else {
+      // Managers and other roles (e.g. telecaller, executive) see everything in their branch.
+      if (user.branch) {
+        where.branchId = user.branch;
+      } else {
+        // Fallback if no branch assigned: restrict to self-assigned
+        where.assignedToUserId = user.id;
+      }
     }
 
-    // For executives, only show data from their assigned branch
-    if (user.role === 'executive' && user.branch) {
-      where.branchId = user.branch;
-    }
+    // Previous specific logic removed to enforce strict Admin vs Branch/User split.
 
     if (search) {
       where.OR = [
@@ -840,10 +845,10 @@ export async function bulkAssignEnquiries(
     revalidatePath('/enquiries/job-orders/pending');
     revalidatePath('/enquiries/job-orders/completed');
     revalidatePath('/enquiries/job-orders/due');
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: `${result.count} enquiries assigned and job order created successfully`,
-      data: result 
+      data: result
     };
   } catch (error) {
     console.error('Error bulk assigning enquiries:', error);

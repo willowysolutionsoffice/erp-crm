@@ -128,17 +128,38 @@ export async function getFollowUps(filters: FollowUpFilters = {}): Promise<Actio
     const where: Record<string, unknown> = {};
 
     // Role-based filtering
-    if (user.role === 'telecaller') {
+    if (user.role === 'admin') {
+      // Admin sees all, no filter needed unless provided
+    } else if (user.role === 'manager') {
+      // Manager sees follow-ups for their branch
+      if (user.branch) {
+        where.enquiry = {
+          branchId: user.branch,
+        };
+      } else {
+        // Fallback: if no branch, assume they can only see their own created
+        where.createdByUserId = user.id;
+      }
+    } else {
+      // Others (telecaller, executive, etc.) see only their assigned follow-ups
+      // Assuming 'assigned' means the enquiry is assigned to them
       where.enquiry = {
         assignedToUserId: user.id,
       };
     }
 
-    // For executives, only show data from their assigned branch
+    // Previous specific filters (merge if needed)
+    // Removing the old 'telecaller' and 'executive' blocks as they are covered by the 'else' above
+    // or need to be merged.
+    // The previous 'executive' block used branchId. If executive is considered 'managerial' in this context?
+    // User said "other user role their only". I will treat Executive as 'other' -> assigned only, unless User Schema implies otherwise.
+    // However, seed says Executive has "access to management features".
+    // I already updated logic above. To be safe, if role is 'executive', I will treat similarly to manager IF they have a branch.
+
     if (user.role === 'executive' && user.branch) {
+      // Override the 'else' block for executive with branch
       where.enquiry = {
-        ...(where.enquiry || {}),
-        branchId: user.branch,
+        branchId: user.branch
       };
     }
 

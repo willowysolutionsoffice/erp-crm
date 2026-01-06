@@ -5,10 +5,12 @@ export interface NavItem {
   title: string;
   url: string;
   icon?: Icon;
+  badge?: number;
   isActive?: boolean;
   items?: {
     title: string;
     url: string;
+    badge?: number;
   }[];
 }
 
