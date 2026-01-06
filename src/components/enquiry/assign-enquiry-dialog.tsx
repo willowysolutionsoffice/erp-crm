@@ -170,6 +170,17 @@ export function AssignEnquiryDialog({
       return;
     }
 
+    // Validate start date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      toast.error('Start date cannot be in the past');
+      return;
+    }
+
     if (startDate > endDate) {
       toast.error('Start date cannot be after end date');
       return;
@@ -178,7 +189,7 @@ export function AssignEnquiryDialog({
     setIsAssigning(true);
     try {
       let result;
-      
+
       if (enquiryIds && enquiryIds.length > 0) {
         // Bulk assignment
         result = await bulkAssignEnquiries(
@@ -228,7 +239,7 @@ export function AssignEnquiryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isBulk ? 'Bulk Assign Enquiries' : 'Assign Enquiry'}</DialogTitle>
           <DialogDescription>
@@ -240,93 +251,81 @@ export function AssignEnquiryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 py-2">
           {/* Job Details */}
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="job-name">Job Name *</Label>
-              <Input
-                id="job-name"
-                placeholder="Enter job name"
-                value={jobName}
-                onChange={(e) => setJobName(e.target.value)}
-                disabled={isAssigning}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="job-description">Description (optional)</Label>
-              <Textarea
-                id="job-description"
-                placeholder="Add a short description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={isAssigning}
-                rows={3}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="job-name">Job Name *</Label>
+            <Input
+              id="job-name"
+              placeholder="Enter job name"
+              value={jobName}
+              onChange={(e) => setJobName(e.target.value)}
+              disabled={isAssigning}
+            />
           </div>
 
-          {/* Branch */}
-          <div className="space-y-2">
-            <Label htmlFor="branch">Branch *</Label>
-            <Select
-              value={selectedBranchId}
-              onValueChange={(value) => {
-                setSelectedBranchId(value);
-                setSelectedUserId(null);
-              }}
-              disabled={isAssigning || isLoadingBranches || branches.length === 0}
-            >
-              <SelectTrigger id="branch">
-                <SelectValue
-                  placeholder={isLoadingBranches ? 'Loading branches...' : 'Select branch'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Branch */}
+            <div className="space-y-2">
+              <Label htmlFor="branch">Branch *</Label>
+              <Select
+                value={selectedBranchId}
+                onValueChange={(value) => {
+                  setSelectedBranchId(value);
+                  setSelectedUserId(null);
+                }}
+                disabled={isAssigning || isLoadingBranches || branches.length === 0}
+              >
+                <SelectTrigger id="branch">
+                  <SelectValue
+                    placeholder={isLoadingBranches ? 'Loading...' : 'Select branch'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* User */}
-          <div className="space-y-2">
-            <Label htmlFor="assignee">User *</Label>
-            <Select
-              value={selectedUserId ?? ''}
-              onValueChange={(value) => setSelectedUserId(value)}
-              disabled={
-                isAssigning ||
-                isLoadingUsers ||
-                !selectedBranchId ||
-                availableUsers.length === 0
-              }
-            >
-              <SelectTrigger id="assignee">
-                <SelectValue
-                  placeholder={
-                    isLoadingUsers
-                      ? 'Loading users...'
-                      : !selectedBranchId
-                        ? 'Select a branch first'
-                        : availableUsers.length === 0
-                          ? 'No users for this branch'
-                          : 'Select user'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {availableUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}{' '}
-                    <span className="text-xs text-muted-foreground">({user.email})</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* User */}
+            <div className="space-y-2">
+              <Label htmlFor="assignee">User *</Label>
+              <Select
+                value={selectedUserId ?? ''}
+                onValueChange={(value) => setSelectedUserId(value)}
+                disabled={
+                  isAssigning ||
+                  isLoadingUsers ||
+                  !selectedBranchId ||
+                  availableUsers.length === 0
+                }
+              >
+                <SelectTrigger id="assignee">
+                  <SelectValue
+                    placeholder={
+                      isLoadingUsers
+                        ? 'Loading...'
+                        : !selectedBranchId
+                          ? 'Select branch'
+                          : availableUsers.length === 0
+                            ? 'No users'
+                            : 'Select user'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Date Selection */}
@@ -345,7 +344,7 @@ export function AssignEnquiryDialog({
                     disabled={isAssigning}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, 'PPP') : 'Pick a date'}
+                    {startDate ? format(startDate, 'MMM dd, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -353,7 +352,11 @@ export function AssignEnquiryDialog({
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
-                    disabled={(date) => endDate ? date > endDate : false}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today || (endDate ? date > endDate : false);
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -373,7 +376,7 @@ export function AssignEnquiryDialog({
                     disabled={isAssigning}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, 'PPP') : 'Pick a date'}
+                    {endDate ? format(endDate, 'MMM dd, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -389,6 +392,18 @@ export function AssignEnquiryDialog({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="job-description">Description (optional)</Label>
+            <Textarea
+              id="job-description"
+              placeholder="Add a short description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={isAssigning}
+              rows={2}
+            />
+          </div>
+
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks (optional)</Label>
@@ -398,7 +413,7 @@ export function AssignEnquiryDialog({
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               disabled={isAssigning}
-              rows={3}
+              rows={2}
             />
           </div>
 
