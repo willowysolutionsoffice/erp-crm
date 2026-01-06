@@ -95,9 +95,9 @@ export function NotificationList({ onOpenChange }: NotificationListProps) {
                     </Button>
                 )}
             </div>
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-75">
                 {notifications.length === 0 ? (
-                    <div className="flex h-[200px] flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <div className="flex h-50 flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Bell className="h-8 w-8 opacity-20" />
                         <p className="text-sm">No notifications</p>
                     </div>
