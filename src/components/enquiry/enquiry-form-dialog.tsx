@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useAction } from 'next-safe-action/hooks';
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAction } from "next-safe-action/hooks";
 
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -22,19 +22,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { Edit, Plus } from 'lucide-react';
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Edit, Plus } from "lucide-react";
 
 import {
   createEnquiry,
@@ -43,34 +43,43 @@ import {
   getCourses,
   getEnquirySources,
   getRequiredServices,
-} from '@/server/actions/enquiry-action';
-import { EnquiryStatus, Enquiry } from '@/types/enquiry';
-import { Branch, Course, EnquirySource, RequiredService } from '@/types/data-management';
-import { authClient } from '@/lib/auth-client';
+} from "@/server/actions/enquiry-action";
+import { EnquiryStatus, Enquiry } from "@/types/enquiry";
+import {
+  Branch,
+  Course,
+  EnquirySource,
+  RequiredService,
+} from "@/types/data-management";
+import { authClient } from "@/lib/auth-client";
 
 // Form schema for client-side validation - make branchId optional when user has branch
-const createEnquiryFormSchema = (userHasBranch: boolean) => z.object({
-  candidateName: z.string().min(1, 'Candidate name is required').max(100),
-  phone: z.string().min(10, 'Valid phone number is required').max(15),
-  contact2: z.string().optional(),
-  email: z.string().email('Valid email is required').optional().or(z.literal('')),
-  address: z.string().optional(),
-  status: z.nativeEnum(EnquiryStatus).optional(),
-  notes: z.string().optional(),
-  feedback: z.string().optional(),
-  enquirySourceId: z.string().min(1, 'Please select an enquiry source'),
-  branchId: userHasBranch
-    ? z.string().optional()
-    : z.string().min(1, 'Please select a branch'),
-  preferredCourseId: z.string().optional(),
-  requiredServiceId: z.string().optional(),
-});
+const createEnquiryFormSchema = (userHasBranch: boolean) =>
+  z.object({
+    candidateName: z.string().min(1, "Candidate name is required").max(100),
+    phone: z.string().min(10, "Valid phone number is required").max(15),
+    contact2: z.string().optional(),
+    email: z
+      .string()
+      .email("Valid email is required")
+      .optional()
+      .or(z.literal("")),
+    address: z.string().optional(),
+    status: z.nativeEnum(EnquiryStatus).optional(),
+    notes: z.string().optional(),
+    feedback: z.string().optional(),
+    enquirySourceId: z.string().min(1, "Please select an enquiry source"),
+    branchId: z.string().min(1, "Please select a branch"),
+
+    preferredCourseId: z.string().optional(),
+    requiredServiceId: z.string().optional(),
+  });
 
 type EnquiryFormData = z.infer<ReturnType<typeof createEnquiryFormSchema>>;
 
 interface EnquiryFormDialogProps {
   enquiry?: Enquiry; // For editing - pass enquiry data to pre-fill form
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
   onSuccess?: () => void;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -79,7 +88,7 @@ interface EnquiryFormDialogProps {
 
 export function EnquiryFormDialog({
   enquiry,
-  mode = 'create',
+  mode = "create",
   onSuccess,
   trigger,
   open: controlledOpen,
@@ -87,14 +96,16 @@ export function EnquiryFormDialog({
 }: EnquiryFormDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ branch?: string | null } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    branch?: string | null;
+  } | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   // Use controlled state if provided, otherwise use internal state
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange || setInternalOpen;
 
-  const isEditMode = mode === 'edit' && enquiry;
+  const isEditMode = mode === "edit" && enquiry;
   const userBranch = currentUser?.branch;
   const userHasBranch = Boolean(userBranch);
 
@@ -106,7 +117,7 @@ export function EnquiryFormDialog({
         const session = await authClient.getSession();
         setCurrentUser(session.data?.user || null);
       } catch (error) {
-        console.error('Failed to get user session:', error);
+        console.error("Failed to get user session:", error);
       } finally {
         setIsLoadingUser(false);
       }
@@ -128,10 +139,14 @@ export function EnquiryFormDialog({
     isExecuting: isUpdating,
   } = useAction(updateEnquiry);
 
-  const { execute: fetchBranches, result: branchesResult } = useAction(getBranches);
-  const { execute: fetchCourses, result: coursesResult } = useAction(getCourses);
-  const { execute: fetchSources, result: sourcesResult } = useAction(getEnquirySources);
-  const { execute: fetchServices, result: servicesResult } = useAction(getRequiredServices);
+  const { execute: fetchBranches, result: branchesResult } =
+    useAction(getBranches);
+  const { execute: fetchCourses, result: coursesResult } =
+    useAction(getCourses);
+  const { execute: fetchSources, result: sourcesResult } =
+    useAction(getEnquirySources);
+  const { execute: fetchServices, result: servicesResult } =
+    useAction(getRequiredServices);
 
   const isExecuting = isCreating || isUpdating;
   const actionResult = isEditMode ? updateResult : createResult;
@@ -140,40 +155,41 @@ export function EnquiryFormDialog({
   const form = useForm<EnquiryFormData>({
     resolver: zodResolver(createEnquiryFormSchema(userHasBranch)),
     defaultValues: {
-      candidateName: enquiry?.candidateName || '',
-      phone: enquiry?.phone || '',
-      contact2: enquiry?.contact2 || '',
-      email: enquiry?.email || '',
-      address: enquiry?.address || '',
+      candidateName: enquiry?.candidateName || "",
+      phone: enquiry?.phone || "",
+      contact2: enquiry?.contact2 || "",
+      email: enquiry?.email || "",
+      address: enquiry?.address || "",
       status: enquiry?.status || EnquiryStatus.NEW,
-      notes: enquiry?.notes || '',
-      feedback: enquiry?.feedback || '',
-      enquirySourceId: enquiry?.enquirySourceId || '',
-      branchId: enquiry?.branchId || userBranch || '', // Prefill with user's branch
-      preferredCourseId: enquiry?.preferredCourseId || '',
-      requiredServiceId: enquiry?.requiredServiceId || '',
+      notes: enquiry?.notes || "",
+      feedback: enquiry?.feedback || "",
+      enquirySourceId: enquiry?.enquirySourceId || "",
+      branchId: enquiry?.branchId || userBranch || undefined,
+
+      preferredCourseId: enquiry?.preferredCourseId || "",
+      requiredServiceId: enquiry?.requiredServiceId || "",
     },
   });
 
   // Update form values when enquiry changes (for edit mode) or when user data loads
   useEffect(() => {
     const shouldReset = enquiry && isEditMode;
-    const defaultBranchId = enquiry?.branchId || userBranch || '';
+    const defaultBranchId = enquiry?.branchId || userBranch || "";
 
     if (shouldReset || (!enquiry && userBranch)) {
       form.reset({
-        candidateName: enquiry?.candidateName || '',
-        phone: enquiry?.phone || '',
-        contact2: enquiry?.contact2 || '',
-        email: enquiry?.email || '',
-        address: enquiry?.address || '',
+        candidateName: enquiry?.candidateName || "",
+        phone: enquiry?.phone || "",
+        contact2: enquiry?.contact2 || "",
+        email: enquiry?.email || "",
+        address: enquiry?.address || "",
         status: enquiry?.status || EnquiryStatus.NEW,
-        notes: enquiry?.notes || '',
-        feedback: enquiry?.feedback || '',
-        enquirySourceId: enquiry?.enquirySourceId || '',
+        notes: enquiry?.notes || "",
+        feedback: enquiry?.feedback || "",
+        enquirySourceId: enquiry?.enquirySourceId || "",
         branchId: defaultBranchId,
-        preferredCourseId: enquiry?.preferredCourseId || '',
-        requiredServiceId: enquiry?.requiredServiceId || '',
+        preferredCourseId: enquiry?.preferredCourseId || "",
+        requiredServiceId: enquiry?.requiredServiceId || "",
       });
     }
   }, [enquiry, isEditMode, form, userBranch]);
@@ -185,7 +201,9 @@ export function EnquiryFormDialog({
     if (actionResult?.data?.success) {
       const message =
         actionResult.data.message ||
-        (isEditMode ? 'Enquiry updated successfully' : 'Enquiry created successfully');
+        (isEditMode
+          ? "Enquiry updated successfully"
+          : "Enquiry created successfully");
       toast.success(message);
       setOpen(false);
       form.reset();
@@ -193,13 +211,18 @@ export function EnquiryFormDialog({
       onSuccess?.();
     } else if (actionResult?.serverError) {
       toast.error(
-        `Error ${isEditMode ? 'updating' : 'creating'} enquiry: ${actionResult.serverError}`
+        `Error ${isEditMode ? "updating" : "creating"} enquiry: ${
+          actionResult.serverError
+        }`
       );
       setIsProcessingAction(false);
     } else if (actionResult?.validationErrors) {
       const errorMessages = Object.entries(actionResult.validationErrors)
-        .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-        .join('\n');
+        .map(
+          ([field, errors]) =>
+            `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`
+        )
+        .join("\n");
 
       toast.error(`Validation errors:\n${errorMessages}`);
       setIsProcessingAction(false);
@@ -227,7 +250,7 @@ export function EnquiryFormDialog({
       // For edit mode, branchId can be undefined
     } else if (!isEditMode && !finalBranchId) {
       // For create mode, branchId is required
-      toast.error('Branch selection is required');
+      toast.error("Branch selection is required");
       setIsProcessingAction(false);
       return;
     }
@@ -274,7 +297,9 @@ export function EnquiryFormDialog({
   const services = (servicesResult?.data?.data as RequiredService[]) || [];
 
   // Find user's branch name for display
-  const userBranchName = userBranch ? branches.find(b => b.id === userBranch)?.name : '';
+  const userBranchName = userBranch
+    ? branches.find((b) => b.id === userBranch)?.name
+    : "";
 
   // Loading component similar to loading.tsx
   const LoadingSpinner = () => (
@@ -313,8 +338,8 @@ export function EnquiryFormDialog({
     </div>
   ) : (
     <Button
-      variant={isEditMode ? 'outline' : 'default'}
-      size={isEditMode ? 'sm' : 'default'}
+      variant={isEditMode ? "outline" : "default"}
+      size={isEditMode ? "sm" : "default"}
       onClick={handleTriggerClick}
     >
       {isEditMode ? (
@@ -337,11 +362,13 @@ export function EnquiryFormDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Edit Enquiry' : 'Add New Enquiry'}</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? "Edit Enquiry" : "Add New Enquiry"}
+            </DialogTitle>
             <DialogDescription>
               {isEditMode
-                ? 'Update the enquiry information. Fields marked with * are required.'
-                : 'Create a new enquiry record. Fields marked with * are required.'}
+                ? "Update the enquiry information. Fields marked with * are required."
+                : "Create a new enquiry record. Fields marked with * are required."}
             </DialogDescription>
           </DialogHeader>
 
@@ -349,7 +376,10 @@ export function EnquiryFormDialog({
             <LoadingSpinner />
           ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Candidate Name */}
                   <FormField
@@ -359,7 +389,10 @@ export function EnquiryFormDialog({
                       <FormItem>
                         <FormLabel>Candidate Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter candidate name" {...field} />
+                          <Input
+                            placeholder="Enter candidate name"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -389,7 +422,10 @@ export function EnquiryFormDialog({
                       <FormItem>
                         <FormLabel>Secondary Contact</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter secondary contact" {...field} />
+                          <Input
+                            placeholder="Enter secondary contact"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -404,7 +440,11 @@ export function EnquiryFormDialog({
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Enter email address" {...field} />
+                          <Input
+                            type="email"
+                            placeholder="Enter email address"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -419,7 +459,10 @@ export function EnquiryFormDialog({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Select status" />
@@ -428,7 +471,7 @@ export function EnquiryFormDialog({
                             <SelectContent>
                               {Object.values(EnquiryStatus).map((status) => (
                                 <SelectItem key={status} value={status}>
-                                  {status.replace('_', ' ')}
+                                  {status.replace("_", " ")}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -446,7 +489,10 @@ export function EnquiryFormDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Enquiry Source *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select enquiry source" />
@@ -471,19 +517,14 @@ export function EnquiryFormDialog({
                     name="branchId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Branch {!userHasBranch ? '*' : ''}
-                        </FormLabel>
+                        <FormLabel>Branch *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value}
-                          disabled={userHasBranch}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full">
-                              <SelectValue
-                                placeholder={userHasBranch ? userBranchName : "Select branch"}
-                              />
+                              <SelectValue placeholder="Select branch" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -507,8 +548,10 @@ export function EnquiryFormDialog({
                       <FormItem>
                         <FormLabel>Preferred Course</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(value || undefined)}
-                          value={field.value || ''}
+                          onValueChange={(value) =>
+                            field.onChange(value || undefined)
+                          }
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full">
@@ -518,7 +561,8 @@ export function EnquiryFormDialog({
                           <SelectContent>
                             {courses.map((course) => (
                               <SelectItem key={course.id} value={course.id}>
-                                {course.name} {course.duration && `- ${course.duration}`}
+                                {course.name}{" "}
+                                {course.duration && `- ${course.duration}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -536,8 +580,10 @@ export function EnquiryFormDialog({
                       <FormItem>
                         <FormLabel>Required Service</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(value || undefined)}
-                          value={field.value || ''}
+                          onValueChange={(value) =>
+                            field.onChange(value || undefined)
+                          }
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full">
@@ -615,7 +661,8 @@ export function EnquiryFormDialog({
                           />
                         </FormControl>
                         <FormDescription>
-                          Any additional information about the enquiry that might be helpful
+                          Any additional information about the enquiry that
+                          might be helpful
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -635,11 +682,11 @@ export function EnquiryFormDialog({
                   <Button type="submit" disabled={isExecuting}>
                     {isExecuting
                       ? isEditMode
-                        ? 'Updating...'
-                        : 'Creating...'
+                        ? "Updating..."
+                        : "Creating..."
                       : isEditMode
-                      ? 'Update Enquiry'
-                      : 'Create Enquiry'}
+                      ? "Update Enquiry"
+                      : "Create Enquiry"}
                   </Button>
                 </DialogFooter>
               </form>
