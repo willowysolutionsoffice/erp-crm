@@ -175,6 +175,14 @@ export async function getEnquiries(filters: EnquiryFilters = {}): Promise<Action
       where.createdAt = createdAtFilter;
     }
 
+    if (filters.isAssigned !== undefined) {
+      if (filters.isAssigned) {
+        where.jobLeads = { some: {} };
+      } else {
+        where.jobLeads = { none: {} };
+      }
+    }
+
     const [enquiries, total] = await Promise.all([
       prisma.enquiry.findMany({
         where,

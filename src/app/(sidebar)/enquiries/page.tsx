@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -24,6 +31,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Filter, Eye, Edit, Trash2, MoreVertical, UserPlus, ListTodo, Briefcase } from 'lucide-react';
 import { getEnquiries } from '@/server/actions/enquiry';
+import { getAllBranches } from '@/server/actions/data-management';
 import { ENQUIRY_STATUS_OPTIONS } from '@/constants/enquiry';
 import { toast } from 'sonner';
 import { EnquiryFormDialog } from '@/components/enquiry/enquiry-form-dialog';
@@ -33,6 +41,14 @@ import { AssignEnquiryDialog } from '@/components/enquiry/assign-enquiry-dialog'
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Enquiry } from '@/types/enquiry';
 import { authClient } from '@/lib/auth-client';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Branch } from '@prisma/client';
 
 export default function EnquiriesPage() {
   const router = useRouter();
@@ -75,12 +91,32 @@ export default function EnquiriesPage() {
     id: string;
     candidateName: string;
     assignedToId?: string | null;
+    branchId?: string | null;
+    branchName?: string | null;
   } | null>(null);
 
   // Bulk assign state
   const [isBulkSelectionEnabled, setIsBulkSelectionEnabled] = useState(false);
   const [selectedEnquiryIds, setSelectedEnquiryIds] = useState<string[]>([]);
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
+  const [bulkAssignBranchId, setBulkAssignBranchId] = useState<string | null>(null);
+  const [bulkBranchDialogOpen, setBulkBranchDialogOpen] = useState(false);
+
+  // Filter states
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [filterBranchId, setFilterBranchId] = useState<string>('all');
+  const [filterAssigned, setFilterAssigned] = useState<string>('all');
+
+  // Fetch branches
+  useEffect(() => {
+    const fetchBranches = async () => {
+      const result = await getAllBranches();
+      if (result.success) {
+        setBranches(result.data as Branch[]);
+      }
+    };
+    fetchBranches();
+  }, []);
 
   // Fetch enquiries
   const fetchEnquiriesData = useCallback(async () => {
@@ -90,6 +126,8 @@ export default function EnquiriesPage() {
         page: currentPage,
         limit: 10,
         search: search || undefined,
+        branchId: filterBranchId !== 'all' ? filterBranchId : undefined,
+        isAssigned: filterAssigned === 'all' ? undefined : filterAssigned === 'assigned',
       });
 
       if (result.success) {
@@ -103,7 +141,7 @@ export default function EnquiriesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search]);
+  }, [currentPage, search, filterBranchId, filterAssigned]);
 
   // Fetch enquiries on component mount and when filters change
   useEffect(() => {
@@ -114,12 +152,37 @@ export default function EnquiriesPage() {
   const refreshEnquiries = useCallback(() => {
     fetchEnquiriesData();
     setSelectedEnquiryIds([]); // Clear selection on refresh
+    setBulkAssignBranchId(null);
+    setIsBulkSelectionEnabled(false);
   }, [fetchEnquiriesData]);
 
   // Bulk Action Handlers
   const toggleBulkSelection = () => {
-    setIsBulkSelectionEnabled(!isBulkSelectionEnabled);
-    setSelectedEnquiryIds([]);
+    if (isBulkSelectionEnabled) {
+      // Cancel selection
+      setIsBulkSelectionEnabled(false);
+      setSelectedEnquiryIds([]);
+      setBulkAssignBranchId(null);
+      if (filterBranchId === bulkAssignBranchId) {
+        setFilterBranchId('all');
+      }
+    } else {
+      if (userRole === 'admin' && filterBranchId === 'all') {
+        setBulkBranchDialogOpen(true);
+      } else {
+        if (filterBranchId !== 'all') {
+          setBulkAssignBranchId(filterBranchId);
+        }
+        setIsBulkSelectionEnabled(true);
+      }
+    }
+  };
+
+  const handleBulkBranchSelect = (branchId: string) => {
+    setFilterBranchId(branchId);
+    setBulkAssignBranchId(branchId);
+    setIsBulkSelectionEnabled(true);
+    setBulkBranchDialogOpen(false);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -161,7 +224,9 @@ export default function EnquiriesPage() {
     setEnquiryToAssign({
       id: enquiry.id,
       candidateName: enquiry.candidateName,
-      assignedToId: enquiry.assignedTo?.id
+      assignedToId: enquiry.assignedTo?.id,
+      branchId: enquiry.branchId,
+      branchName: enquiry.branch?.name
     });
     setAssignDialogOpen(true);
   };
@@ -221,6 +286,52 @@ export default function EnquiriesPage() {
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
+            
+            {/* Branch Filter (Admin Only) */}
+            {userRole === 'admin' && (
+              <div className="w-[180px]">
+                <Select
+                  value={filterBranchId}
+                  onValueChange={(value) => {
+                    setFilterBranchId(value);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Assigned Status Filter */}
+            <div className="w-[150px]">
+              <Select
+                value={filterAssigned}
+                onValueChange={(value) => {
+                  setFilterAssigned(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {canAssign && (
               <>
                 <Button 
@@ -230,6 +341,35 @@ export default function EnquiriesPage() {
                   <ListTodo className="mr-2 h-4 w-4" />
                   {isBulkSelectionEnabled ? 'Cancel Selection' : 'Bulk Assign'}
                 </Button>
+                
+                {/* Branch Selection Dialog for Bulk Assign */}
+                <Dialog open={bulkBranchDialogOpen} onOpenChange={setBulkBranchDialogOpen}>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Select Branch</DialogTitle>
+                      <DialogDescription>
+                        Please select a branch to proceed with bulk assignment. All enquiries must belong to the same branch.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <Select
+                        onValueChange={handleBulkBranchSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branches.map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id}>
+                              {branch.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {isBulkSelectionEnabled && selectedEnquiryIds.length > 0 && (
                   <Button onClick={handleBulkAssign}>
                     <UserPlus className="mr-2 h-4 w-4" />
@@ -238,10 +378,6 @@ export default function EnquiriesPage() {
                 )}
               </>
             )}
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
             <Button variant="outline">Export</Button>
           </div>
         </CardContent>
@@ -480,6 +616,8 @@ export default function EnquiriesPage() {
           enquiryId={enquiryToAssign.id}
           currentAssigneeId={enquiryToAssign.assignedToId}
           candidateName={enquiryToAssign.candidateName}
+          fixedBranchId={enquiryToAssign.branchId || undefined}
+          fixedBranchName={enquiryToAssign.branchName || undefined}
           onSuccess={refreshEnquiries}
         />
       )}
@@ -490,9 +628,12 @@ export default function EnquiriesPage() {
           open={isBulkAssignDialogOpen}
           onOpenChange={setIsBulkAssignDialogOpen}
           enquiryIds={selectedEnquiryIds}
+          fixedBranchId={bulkAssignBranchId || undefined}
+          fixedBranchName={branches.find(b => b.id === bulkAssignBranchId)?.name}
           onSuccess={() => {
             refreshEnquiries();
             setIsBulkSelectionEnabled(false);
+            setBulkAssignBranchId(null);
           }}
         />
       )}

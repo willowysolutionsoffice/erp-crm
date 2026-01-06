@@ -38,6 +38,8 @@ interface AssignEnquiryDialogProps {
   currentAssigneeId?: string | null;
   onSuccess?: () => void;
   candidateName?: string;
+  fixedBranchId?: string;
+  fixedBranchName?: string;
 }
 
 export function AssignEnquiryDialog({
@@ -48,6 +50,8 @@ export function AssignEnquiryDialog({
   currentAssigneeId,
   onSuccess,
   candidateName,
+  fixedBranchId,
+  fixedBranchName,
 }: AssignEnquiryDialogProps) {
   type AssignableUser = User & { branch?: string | null };
 
@@ -77,10 +81,18 @@ export function AssignEnquiryDialog({
     setJobName('');
     setDescription('');
     setRemarks('');
-    await fetchBranches();
+    
+    if (fixedBranchId) {
+      setSelectedBranchId(fixedBranchId);
+    } else {
+      await fetchBranches();
+    }
   };
 
   const fetchBranches = async () => {
+    // Skip fetching if fixed branch is provided
+    if (fixedBranchId) return;
+
     setIsLoadingBranches(true);
     try {
       const result = await getAllBranches();
@@ -269,27 +281,36 @@ export function AssignEnquiryDialog({
           {/* Branch */}
           <div className="space-y-2">
             <Label htmlFor="branch">Branch *</Label>
-            <Select
-              value={selectedBranchId}
-              onValueChange={(value) => {
-                setSelectedBranchId(value);
-                setSelectedUserId(null);
-              }}
-              disabled={isAssigning || isLoadingBranches || branches.length === 0}
-            >
-              <SelectTrigger id="branch">
-                <SelectValue
-                  placeholder={isLoadingBranches ? 'Loading branches...' : 'Select branch'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {fixedBranchId ? (
+              <Input
+                id="branch"
+                value={fixedBranchName || 'Selected Branch'}
+                disabled
+                className="bg-muted text-muted-foreground"
+              />
+            ) : (
+              <Select
+                value={selectedBranchId}
+                onValueChange={(value) => {
+                  setSelectedBranchId(value);
+                  setSelectedUserId(null);
+                }}
+                disabled={isAssigning || isLoadingBranches || branches.length === 0}
+              >
+                <SelectTrigger id="branch">
+                  <SelectValue
+                    placeholder={isLoadingBranches ? 'Loading branches...' : 'Select branch'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* User */}

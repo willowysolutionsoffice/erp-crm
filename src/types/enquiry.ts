@@ -150,6 +150,7 @@ export interface EnquiryFilters {
   assignedToUserId?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  isAssigned?: boolean;
 }
 
 export interface FollowUpFilters {
