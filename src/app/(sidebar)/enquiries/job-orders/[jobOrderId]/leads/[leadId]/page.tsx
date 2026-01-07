@@ -74,7 +74,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAction } from 'next-safe-action/hooks';
 import { EnquiryActivity, ActivityType } from '@/types/enquiry-activity';
-import { FollowUp, CallLog, EnquiryStatus } from '@/types/enquiry';
+import { FollowUp, CallLog, EnquiryStatus, Enquiry } from '@/types/enquiry';
 import { EnquiryFormDialog } from '@/components/enquiry/enquiry-form-dialog';
 import { StatusUpdateDialog } from '@/components/enquiry/status-update-dialog';
 

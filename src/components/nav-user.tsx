@@ -1,13 +1,15 @@
 'use client';
 
-import { IconDotsVertical, IconLogout } from '@tabler/icons-react';
+import { IconDotsVertical, IconLogout, IconUserCircle } from '@tabler/icons-react';
 import { useAction } from 'next-safe-action/hooks';
 import { logoutAction } from '@/lib/actions/auth';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -75,14 +77,14 @@ export function NavUser({ user }: NavUserProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuGroup>
+            <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="/profile">
                   <IconUserCircle />
                   Account
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href="/billing">
                   <IconCreditCard />
                   Billing
@@ -93,9 +95,9 @@ export function NavUser({ user }: NavUserProps) {
                   <IconNotification />
                   Notifications
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
-            <DropdownMenuSeparator /> */}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleLogout}
               disabled={isLoggingOut}
