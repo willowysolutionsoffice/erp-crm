@@ -744,15 +744,17 @@ export async function getJobLead(id: string): Promise<ActionResponse> {
         },
         lead: {
           include: {
-             preferredCourse: true,
-             enquirySource: true,
-             requiredService: true,
-             assignedTo: {
-               select: {
-                  id: true,
-                  name: true
-               }
-             }
+            preferredCourse: true,
+            enquirySource: true,
+            requiredService: true,
+            assignedTo: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            followUps: true,
+            callLogs: true,
           }
         },
       },
@@ -768,29 +770,29 @@ export async function getJobLead(id: string): Promise<ActionResponse> {
     // Role-based access control
     // Similar logic to getJobOrder
     const jobOrder = jobLead.job;
-    
+
     if (user.role === 'admin') {
       // Allowed
     } else if (user.role === 'manager') {
-       if (user.branch && jobOrder.branchId !== user.branch) {
-         if (jobOrder.managerId !== user.id) {
-           return { success: false, message: 'Access denied' };
-         }
-       } else if (!user.branch && jobOrder.managerId !== user.id) {
-         return { success: false, message: 'Access denied' };
-       }
+      if (user.branch && jobOrder.branchId !== user.branch) {
+        if (jobOrder.managerId !== user.id) {
+          return { success: false, message: 'Access denied' };
+        }
+      } else if (!user.branch && jobOrder.managerId !== user.id) {
+        return { success: false, message: 'Access denied' };
+      }
     } else {
-       if (jobLead.job.managerId !== user.id) { // Telecaller check usually against manager? Or if they are assigned the lead?
-          // For now, sticking to job manager check as primary owner, 
-          // but arguably the 'assignee' of the lead should see it too if implemented.
-          // The schema has assigneeId on JobLead.
-          
-          if (jobLead.assigneeId === user.id) {
-             // Allowed if directly assigned to this lead
-          } else if (jobLead.job.managerId !== user.id) {
-             return { success: false, message: 'Access denied' };
-          }
-       }
+      if (jobLead.job.managerId !== user.id) { // Telecaller check usually against manager? Or if they are assigned the lead?
+        // For now, sticking to job manager check as primary owner, 
+        // but arguably the 'assignee' of the lead should see it too if implemented.
+        // The schema has assigneeId on JobLead.
+
+        if (jobLead.assigneeId === user.id) {
+          // Allowed if directly assigned to this lead
+        } else if (jobLead.job.managerId !== user.id) {
+          return { success: false, message: 'Access denied' };
+        }
+      }
     }
 
     return {

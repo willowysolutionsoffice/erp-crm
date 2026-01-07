@@ -290,7 +290,7 @@ export default function EnquiriesPage() {
             
             {/* Branch Filter (Admin Only) */}
             {userRole === 'admin' && (
-              <div className="w-[180px]">
+              <div className="w-45">
                 <Select
                   value={filterBranchId}
                   onValueChange={(value) => {
@@ -314,7 +314,7 @@ export default function EnquiriesPage() {
             )}
 
             {/* Assigned Status Filter */}
-            <div className="w-[150px]">
+            <div className="w-37.5">
               <Select
                 value={filterAssigned}
                 onValueChange={(value) => {
@@ -345,7 +345,7 @@ export default function EnquiriesPage() {
                 
                 {/* Branch Selection Dialog for Bulk Assign */}
                 <Dialog open={bulkBranchDialogOpen} onOpenChange={setBulkBranchDialogOpen}>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-106.25">
                     <DialogHeader>
                       <DialogTitle>Select Branch</DialogTitle>
                       <DialogDescription>
@@ -427,7 +427,7 @@ export default function EnquiriesPage() {
                     <TableHeader>
                       <TableRow>
                         {isBulkSelectionEnabled && (
-                          <TableHead className="w-[50px]">
+                          <TableHead className="w-12.5">
                             <Checkbox
                               checked={
                                 enquiries.length > 0 &&
@@ -437,14 +437,14 @@ export default function EnquiriesPage() {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="w-[200px]">Candidate</TableHead>
-                      <TableHead className="w-[120px]">Contact</TableHead>
-                      <TableHead className="w-[150px]">Course</TableHead>
-                      <TableHead className="w-[100px]">Status</TableHead>
-                      <TableHead className="w-[120px]">Source</TableHead>
-                      <TableHead className="w-[120px]">Assigned To</TableHead>
-                      <TableHead className="w-[100px]">Date</TableHead>
-                      <TableHead className="w-[80px] text-right">Actions</TableHead>
+                        <TableHead className="w-50">Candidate</TableHead>
+                      <TableHead className="w-30">Contact</TableHead>
+                      <TableHead className="w-37.5">Course</TableHead>
+                      <TableHead className="w-25">Status</TableHead>
+                      <TableHead className="w-30">Source</TableHead>
+                      <TableHead className="w-30">Assigned To</TableHead>
+                      <TableHead className="w-25">Date</TableHead>
+                      <TableHead className="w-20 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
