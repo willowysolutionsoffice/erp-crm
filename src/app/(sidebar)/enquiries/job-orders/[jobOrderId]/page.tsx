@@ -184,7 +184,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8 h-full min-h-[500px]">
+      <div className="flex items-center justify-center p-8 h-full min-h-125">
         <div className="flex flex-col items-center gap-2">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <div className="text-muted-foreground">Loading job order details...</div>
@@ -203,7 +203,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
   const progress = stats?.percentage || 0;
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-8 max-w-[1600px] mx-auto w-full animate-in fade-in duration-500">
+    <div className="flex flex-col gap-6 p-4 md:p-8 max-w-400 mx-auto w-full animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between bg-card p-6 rounded-xl border shadow-sm">
         <div className="flex items-start gap-4">
@@ -323,7 +323,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-12.5"></TableHead>
                 <TableHead>Candidate</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Contact Info</TableHead>
@@ -375,7 +375,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                         {jobLead.lead.email && (
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Mail className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]" title={jobLead.lead.email}>{jobLead.lead.email}</span>
+                            <span className="truncate max-w-37.5" title={jobLead.lead.email}>{jobLead.lead.email}</span>
                           </div>
                         )}
                       </div>
@@ -448,7 +448,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                                 <MessageSquare className="h-3 w-3" />
                                 Notes
                               </h4>
-                              <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[60px]">
+                              <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-15">
                                 {jobLead.lead.notes ? (
                                   <p className="text-foreground/90 whitespace-pre-wrap">{jobLead.lead.notes}</p>
                                 ) : (
@@ -461,7 +461,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                                 <MessageSquare className="h-3 w-3" />
                                 Feedback
                               </h4>
-                              <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[60px]">
+                              <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-15">
                                 {jobLead.lead.feedback ? (
                                   <p className="text-foreground/90 whitespace-pre-wrap">{jobLead.lead.feedback}</p>
                                 ) : (
@@ -475,7 +475,7 @@ export default function JobOrderDetailPage({ params }: { params: Promise<{ jobOr
                               <MapPin className="h-3 w-3" />
                               Address & Meta Info
                             </h4>
-                            <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-[80px]">
+                            <div className="bg-background border rounded-md p-3 text-sm shadow-sm min-h-20">
                               {jobLead.lead.address ? (
                                 <p>{jobLead.lead.address}</p>
                               ) : (
