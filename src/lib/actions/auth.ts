@@ -6,7 +6,7 @@ import { auth } from '@/lib/auth';
 import { returnValidationErrors } from 'next-safe-action';
 import prisma from '@/lib/prisma';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { loginSchema, userFormSchema } from '@/schema/user-schema';
 import { z } from 'zod';
 
@@ -63,6 +63,62 @@ export const updateUserBranchAction = actionClient
       return {
         success: false,
         message: 'Failed to update user branch',
+      };
+    }
+  });
+
+// Update profile action
+export const updateProfileAction = actionClient
+  .inputSchema(
+    z.object({
+      name: z.string().min(2),
+      email: z.string().email(),
+    })
+  )
+  .action(async ({ parsedInput: { name, email } }) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+
+      if (!session) {
+        return {
+          success: false,
+          message: 'Unauthorized',
+        };
+      }
+
+      // Check if email is already taken by another user
+      if (email !== session.user.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (existingUser) {
+          return {
+            success: false,
+            message: 'Email is already in use',
+          };
+        }
+      }
+
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          name,
+          email,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Profile updated successfully',
+      };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return {
+        success: false,
+        message: 'Failed to update profile',
       };
     }
   });
