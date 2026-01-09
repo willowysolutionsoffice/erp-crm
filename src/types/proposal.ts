@@ -1,7 +1,7 @@
 export enum ProposalStatus {
     DRAFT = 'DRAFT',
-    SENT = 'SENT',
-    ACCEPTED = 'ACCEPTED',
+    SENT = 'SUBMITTED',
+    ACCEPTED = 'APPROVED',
     REJECTED = 'REJECTED',
 }
 

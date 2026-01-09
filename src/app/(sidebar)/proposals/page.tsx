@@ -21,6 +21,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, Filter, Eye, Edit, Trash2, MoreVertical, Plus, FileText } from 'lucide-react';
 import { Proposal, ProposalStatus } from '@/types/proposal';
 import { formatCurrency } from '@/lib/utils';
@@ -32,16 +42,12 @@ export default function ProposalsPage() {
     const [search, setSearch] = useState('');
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const fetchProposals = async () => {
         setIsLoading(true);
         const result = await getProposals();
         if (result?.data?.success && Array.isArray(result.data.data)) {
-            // Note: Adjusting for potential API response wrapper structure if needed
-            // The action returns { success: true, data: API_RESPONSE }
-            // If the API returns direct array: result.data
-            // If API returns { proposals: [...] }: result.data.proposals
-            // Based on typical express res.json(proposals) it should be an array.
             setProposals(result.data.data);
         } else if (Array.isArray(result.data)) {
             setProposals(result.data);
@@ -89,17 +95,16 @@ export default function ProposalsPage() {
         });
     };
 
-    const handleDelete = async (id: string) => {
-        const confirm = window.confirm("Are you sure you want to delete this proposal?");
-        if (!confirm) return;
-
-        const res = await deleteProposal({ id });
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        const res = await deleteProposal({ id: deleteId });
         if (res?.data?.success) {
             toast.success("Proposal deleted");
-            fetchProposals(); // Refresh
+            fetchProposals(); 
         } else {
             toast.error(res?.data?.message || "Failed to delete proposal");
         }
+        setDeleteId(null);
     };
 
     return (
@@ -201,13 +206,13 @@ export default function ProposalsPage() {
                                                             Edit
                                                         </DropdownMenuItem>
                                                     )}
-                                                    <DropdownMenuItem onClick={() => toast.info('Preview PDF (Not implemented remote)')}>
+                                                    <DropdownMenuItem onClick={() => window.open(`/api/proposals/${proposal.id}/pdf`, '_blank')}>
                                                         <FileText className="mr-2 h-4 w-4" />
                                                         Preview PDF
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {proposal.status === ProposalStatus.DRAFT && (
-                                                        <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(proposal.id)}>
+                                                        <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(proposal.id)}>
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Delete
                                                         </DropdownMenuItem>
@@ -222,6 +227,23 @@ export default function ProposalsPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the proposal.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

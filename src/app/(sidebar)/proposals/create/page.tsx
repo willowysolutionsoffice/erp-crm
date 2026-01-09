@@ -14,6 +14,25 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { createProposal } from '@/server/actions/proposal/proposal-actions';
+import { getEnquiries } from '@/server/actions/enquiry';
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Enquiry } from '@/types/enquiry';
+import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 const proposalItemSchema = z.object({
     description: z.string().min(1, 'Description is required'),
@@ -32,7 +51,46 @@ type ProposalFormValues = z.infer<typeof createProposalSchema>;
 
 export default function CreateProposalPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const enquiryIdParam = searchParams.get('enquiryId');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Auto-fill states
+    const [open, setOpen] = useState(false);
+    const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+    const [selectedEnquiryId, setSelectedEnquiryId] = useState<string>("");
+
+    const fetchEnquiries = async (search: string = "") => {
+        const res = await getEnquiries({ page: 1, limit: 10, search });
+        if (res.success && res.data) {
+            setEnquiries(res.data as Enquiry[]);
+        }
+    };
+
+    useEffect(() => {
+        fetchEnquiries();
+    }, []);
+
+    // Handle URL param for enquiryId
+    useEffect(() => {
+        if (enquiryIdParam) {
+            // Fetch specific enquiry details (using list filter for now as quick solution or getEnquiry if available)
+            // Ideally should use getEnquiry(id) but getEnquiries with search might be enough if unique or just fetch list
+            // Let's rely on standard fetch logic or a direct fetch helper if we want to be robust.
+            // Since `getEnquiries` is what I imported, let's use it or `getEnquiry` if I import it.
+             import('@/server/actions/enquiry').then(({ getEnquiry }) => {
+                getEnquiry(enquiryIdParam).then((res) => {
+                    if (res.success && res.data) {
+                        const enquiry = res.data as Enquiry;
+                        setSelectedEnquiryId(enquiry.id); // For visual selection state if needed
+                        form.setValue('clientName', enquiry.candidateName);
+                        form.setValue('clientEmail', enquiry.email || '');
+                        form.setValue('clientPhone', enquiry.phone || '');
+                    }
+                });
+             });
+        }
+    }, [enquiryIdParam]);
 
     const form = useForm<ProposalFormValues>({
         resolver: zodResolver(createProposalSchema),
@@ -88,9 +146,65 @@ export default function CreateProposalPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Client Details</CardTitle>
-                            <CardDescription>Enter the client's information</CardDescription>
+                            <CardDescription>Enter the client's information or select from Enquiries</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-4 md:grid-cols-2">
+                        <CardContent className="grid gap-4">
+                            <div className="flex flex-col space-y-2">
+                                <Label>Import from Enquiry (Optional)</Label>
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={open}
+                                            className="w-full justify-between"
+                                        >
+                                            {selectedEnquiryId
+                                                ? enquiries.find((e) => e.id === selectedEnquiryId)?.candidateName || "Select enquiry..."
+                                                : "Select enquiry to auto-fill..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[400px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search enquiry..." onValueChange={(val) => fetchEnquiries(val)} />
+                                            <CommandList>
+                                                <CommandEmpty>No enquiry found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {enquiries.map((enquiry) => (
+                                                        <CommandItem
+                                                            key={enquiry.id}
+                                                            value={enquiry.candidateName}
+                                                            onSelect={() => {
+                                                                setSelectedEnquiryId(enquiry.id === selectedEnquiryId ? "" : enquiry.id);
+                                                                if (enquiry.id !== selectedEnquiryId) {
+                                                                    form.setValue('clientName', enquiry.candidateName);
+                                                                    form.setValue('clientEmail', enquiry.email || '');
+                                                                    form.setValue('clientPhone', enquiry.phone || '');
+                                                                }
+                                                                setOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    selectedEnquiryId === enquiry.id ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            <div className="flex flex-col">
+                                                                <span>{enquiry.candidateName}</span>
+                                                                <span className="text-xs text-muted-foreground">{enquiry.phone}</span>
+                                                            </div>
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <Separator />
+                            <div className="grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="clientName">Client Name *</Label>
                                 <Input
@@ -122,8 +236,9 @@ export default function CreateProposalPage() {
                                     {...form.register('clientPhone')}
                                 />
                             </div>
-                        </CardContent>
-                    </Card>
+                            </div>
+                    </CardContent>
+                </Card>
 
                     <Card>
                         <CardHeader>

@@ -14,6 +14,13 @@ import { Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProposalStatus } from '@/types/proposal';
 import { getProposalById, updateProposal } from '@/server/actions/proposal/proposal-actions';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 const proposalItemSchema = z.object({
     description: z.string().min(1, 'Description is required'),
@@ -98,7 +105,7 @@ export default function EditProposalPage() {
             const res = await updateProposal({ id, ...data });
             if (res?.data?.success) {
                 toast.success('Proposal updated successfully!');
-                router.push(`/proposals/${id}`);
+                router.push('/proposals');
             } else {
                 toast.error(res?.data?.message || 'Failed to update proposal');
             }
@@ -164,17 +171,6 @@ export default function EditProposalPage() {
                                     placeholder="e.g. +1 234 567 890"
                                     {...form.register('clientPhone')}
                                 />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="status">Status</Label>
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    {...form.register('status')}
-                                >
-                                    {Object.values(ProposalStatus).map(s => (
-                                        <option key={s} value={s}>{s}</option>
-                                    ))}
-                                </select>
                             </div>
                         </CardContent>
                     </Card>

@@ -11,6 +11,24 @@ import { ProposalStatus, Proposal } from '@/types/proposal';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getProposalById, updateProposal, deleteProposal } from '@/server/actions/proposal/proposal-actions';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ProposalDetailPage() {
     const router = useRouter();
@@ -74,7 +92,7 @@ export default function ProposalDetailPage() {
     };
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this proposal?')) return;
+        // Confirm dialog handled by AlertDialog
         try {
             const res = await deleteProposal({ id });
             if (res?.data?.success) {
@@ -113,33 +131,32 @@ export default function ProposalDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => toast.info('Generating PDF (mock)...')}>
+                    <Button variant="outline" onClick={() => window.location.href = `/api/proposals/${id}/pdf?download=true`}>
                         <FileText className="mr-2 h-4 w-4" />
                         PDF
                     </Button>
+                    <div className="w-[180px]">
+                        <Select
+                            value={proposal.status}
+                            onValueChange={(value) => handleStatusChange(value as ProposalStatus)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(ProposalStatus).map((status) => (
+                                    <SelectItem key={status} value={status}>
+                                        {status}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     {proposal.status === ProposalStatus.DRAFT && (
-                        <>
-                            <Button variant="outline" onClick={() => router.push(`/proposals/${id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </Button>
-                            <Button variant="default" onClick={() => handleStatusChange(ProposalStatus.SENT)}>
-                                <Send className="mr-2 h-4 w-4" />
-                                Send
-                            </Button>
-                        </>
-                    )}
-                    {proposal.status === ProposalStatus.SENT && (
-                        <>
-                            <Button variant="outline" className="text-green-600 border-green-200 hover:bg-green-50" onClick={() => handleStatusChange(ProposalStatus.ACCEPTED)}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Mark Accepted
-                            </Button>
-                            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleStatusChange(ProposalStatus.REJECTED)}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Mark Rejected
-                            </Button>
-                        </>
+                         <Button variant="outline" onClick={() => router.push(`/proposals/${id}/edit`)}>
+                             <Edit className="mr-2 h-4 w-4" />
+                             Edit
+                         </Button>
                     )}
                 </div>
             </div>
@@ -237,14 +254,31 @@ export default function ProposalDetailPage() {
                         </CardContent>
                     </Card>
 
-                    <Button
-                        variant="ghost"
-                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={handleDelete}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Proposal
-                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Proposal
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this proposal.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </div>
         </div>

@@ -135,22 +135,6 @@ export const updateProposal = action.schema(updateProposalSchema).action(async (
         const { id, items, ...updateData } = parsedInput;
 
         // 1. Update basic details
-        // The API restricts updates based on status (DRAFT only).
-        // It also seems to separate Item updates from Proposal updates in the controller provided.
-        // "updateProposal" controller updates proposal fields.
-        // "updateProposalItem" controller updates individual items.
-        // "addProposalItem" adds new ones.
-        // This makes a bulk update tricky if the UI sends everything together.
-
-        // Strategy: 
-        // 1. Update main proposal details first.
-        // 2. If items are provided, this is complex because the API doesn't seem to support bulk item replace in `updateProposal`.
-        //    The `updateProposal` controller only does `prisma.proposal.update`.
-
-        // For this iteration, let's assume the UI primarily updates the main info or status.
-        // If items are causing issues, we might need a more complex sync logic or specific actions for items.
-        // Let's try sending what we can.
-
         if (Object.keys(updateData).length > 0) {
             await fetchExternal(`/proposals/${id}`, {
                 method: 'PUT',
@@ -158,22 +142,72 @@ export const updateProposal = action.schema(updateProposalSchema).action(async (
             });
         }
 
-        // If status is updated to SENT/ACCEPTED, etc.
-        // The API has a specific patch for status: router.patch("/:id/status", ...);
-        // But updateProposal also seems to handle status if it's the only field?
-        // "Cannot edit details of proposal that is not in DRAFT status. Only status change allowed."
-        // We'll stick to PUT if DRAFT, or PATCH status if needed? 
-        // The provided controller code says:
-        /*
-          if (existingProposal.status !== ProposalStatus.DRAFT) {
-            if (data.status) { ... allow if only status ... }
-          }
-        */
-        // So PUT is fine for status connection.
+        // 2. Sync Items if provided
+        if (items) {
+            // Fetch current state to compare
+            const currentProposal = await fetchExternal(`/proposals/${id}`);
+            const currentItems: any[] = currentProposal.items || [];
+            
+            // Map current items by ID for easy lookup
+            // Note: The schema for items in updateProposalSchema doesn't have ID, 
+            // but we need to know if we are updating an existing one or adding a new one.
+            // The UI form likely strips IDs or doesn't have them for new items.
+            // *Correction*: The UI form `defaultValues` maps existing items. 
+            // But `items` array in `parsedInput` is validated by `proposalItemSchema` which is:
+            // { description, quantity, unitPrice }. It lacks `id`.
+            // So we can't easily distinguish "update" vs "add" unless we change the schema 
+            // OR use a strategy like: Delete all and re-create (brute force)?
+            // OR assume order? (Dangerous)
+            
+            // Better strategy for this context without changing schema too much:
+            // The `updateProposalSchema` *should* have ID to support updates properly.
+            // But since I cannot easily change the schema without breaking validation if the UI doesn't send it,
+            // let's look at `proposalItemSchema`. It strictly has desc, qty, price.
+            
+            // Let's TRY to rely on a "Delete All and Re-Create" strategy for items *if safe*, 
+            // but `deleteProposalItem` requires ID. 
+            // And we can't "delete all" in one go.
+            
+            // Okay, I will relax the schema in this action to allow `id` in items if passed, 
+            // even though Zod might strip it if not defined. 
+            // Wait, existing `proposalItemSchema` definition in this file:
+            // const proposalItemSchema = z.object({ description: z.string(), quantity: z.number(), unitPrice: z.number() });
+            // It strips extra keys.
+            
+            // I MUST update the schema to include optional ID to support this properly.
+            // I will do this in a separate edit or assume I can modify it here.
+            
+            // For now, since schema is strict, I can't get IDs of items from `parsedInput.items`.
+            // This means I can't know which item is which.
+            // **CRITICAL FIX**: I will modify the schema first (in a separate step or implicitly here if I could).
+            // But I can't modify top-level variables easily in `replace_file_content`.
+            
+            // Workaround: I will fetch the layout again in a "multi-step" replace or just do simple delete-recreate?
+            // "Delete Recreate" is:
+            // 1. Loop currentItems -> deleteProposalItem(id)
+            // 2. Loop items -> addProposalItem(data)
+            // This is heavy but robust for data consistency if ID matching is hard.
+            // Let's do this approach for now.
+            
+            // 2.1 Delete all existing items sequentially to avoid DB locking/race issues
+            for (const item of currentItems) {
+                await fetchExternal(`/proposals/items/${item.id}`, { method: 'DELETE' });
+            }
+
+            // 2.2 Create new items sequentially to ensure Total Amount is calculated correctly
+            // Parallel execution (Promise.all) causes race conditions in the backend transaction
+            // where concurrent "read-sum-update" cycles overwrite the total.
+            for (const item of items) {
+                await fetchExternal(`/proposals/${id}/items`, {
+                    method: 'POST',
+                    body: JSON.stringify(item)
+                });
+            }
+        }
 
         revalidatePath('/proposals');
         revalidatePath(`/proposals/${id}`);
-        return { success: true, message: 'Proposal updated successfully ' };
+        return { success: true, message: 'Proposal updated successfully' };
     } catch (error) {
         return { success: false, message: error instanceof Error ? error.message : 'Failed to update proposal' };
     }
