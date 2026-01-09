@@ -69,6 +69,11 @@ export const SIDEBAR_DATA: SidebarData = {
       url: '/services',
       icon: IconFileDollar,
     },
+    {
+      title: 'Proposals',
+      url: '/proposals',
+      icon: IconFileText,
+    },
   ],
   admin: [
     {
