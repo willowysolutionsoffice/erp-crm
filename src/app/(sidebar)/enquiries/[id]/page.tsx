@@ -56,6 +56,7 @@ import {
   Activity,
   Edit2,
   ArrowUpCircle,
+  FileText,
 
 } from 'lucide-react';
 import { getEnquiry } from '@/server/actions/enquiry';
@@ -607,6 +608,15 @@ export default function EnquiryDetailPage() {
               )}
 
               <EnquiryFormDialog mode="edit" enquiry={enquiry} onSuccess={fetchEnquiry} />
+
+              <Button 
+                    variant="outline" 
+                    className="relative z-10 w-full"
+                    onClick={() => router.push(`/proposals/create?enquiryId=${enquiry.id}`)}
+                >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Create Proposal
+              </Button>
 
               <StatusUpdateDialog
                 enquiryId={enquiry.id}

@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, Eye, Edit, Trash2, MoreVertical, UserPlus, ListTodo, Briefcase } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, MoreVertical, UserPlus, ListTodo, Briefcase, FileText } from 'lucide-react';
 import { getEnquiries } from '@/server/actions/enquiry';
 import { getAllBranches } from '@/server/actions/data-management';
 import { ENQUIRY_STATUS_OPTIONS } from '@/constants/enquiry';
@@ -518,13 +518,20 @@ export default function EnquiriesPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="cursor-pointer"
-                                onClick={() => handleEditEnquiry(enquiry)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() => handleEditEnquiry(enquiry)}
+                                >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() => router.push(`/proposals/create?enquiryId=${enquiry.id}`)}
+                                >
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Create Proposal
+                                </DropdownMenuItem>
                               {canAssign && (
                                 <DropdownMenuItem
                                   className="cursor-pointer"
