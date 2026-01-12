@@ -2,8 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const API_BASE_URL = process.env.ERP_API_BASE_URL;
-// In a real app, ensure process.env.JWT_SECRET is set
+const API_BASE_URL = process.env.API_BASE_URL;
 const JWT_SECRET  = process.env.JWT_SECRET ; 
 
 
@@ -11,11 +10,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log(API_BASE_URL,JWT_SECRET)
   try {
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
     const isDownload = searchParams.get('download') === 'true';
-
+    
 
     if(!API_BASE_URL || !JWT_SECRET) {
       return new NextResponse("Server configuration error for ENV", { status: 500 });
