@@ -114,8 +114,11 @@ export default function ProposalsPage() {
                     <h1 className="text-3xl font-bold text-gray-900">Proposals</h1>
                     <p className="text-gray-600">Manage and track proposals</p>
                 </div>
-                <Button onClick={() => router.push('/proposals/create')}>
-                    <Plus className="mr-2 h-4 w-4" />
+                <Button 
+                    onClick={() => router.push('/proposals/create')}
+                    className="h-8 text-xs px-3 md:h-10 md:text-sm md:px-4"
+                >
+                    <Plus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                     Create Proposal
                 </Button>
             </div>
@@ -147,8 +150,8 @@ export default function ProposalsPage() {
                 </CardContent>
             </Card>
 
-            {/* List */}
-            <Card>
+            {/* Desktop View */}
+            <Card className="hidden md:block">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
@@ -227,6 +230,93 @@ export default function ProposalsPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Mobile View */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+                {isLoading ? (
+                    <Card>
+                        <CardContent className="py-8 text-center text-muted-foreground">
+                            Loading proposals...
+                        </CardContent>
+                    </Card>
+                ) : filteredProposals.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-8 text-center text-muted-foreground">
+                            No proposals found
+                        </CardContent>
+                    </Card>
+                ) : (
+                    filteredProposals.map((proposal) => (
+                        <Card key={proposal.id}>
+                            <CardHeader className="p-1.5 pb-0.5">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="text-xs font-bold">{proposal.proposalNo}</CardTitle>
+                                        <CardDescription className="text-[10px]">{formatDate(proposal.createdAt)}</CardDescription>
+                                    </div>
+                                    <Badge className={`${getStatusColor(proposal.status)} px-1 py-0 text-[9px] h-4`}>
+                                        {proposal.status}
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-1.5 pt-0 pb-0.5">
+                                <div className="grid gap-0 text-[10px] leading-tight">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Client:</span>
+                                        <span className="font-medium truncate max-w-[150px]">{proposal.clientName}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Amount:</span>
+                                        <span className="font-medium">{formatCurrency(proposal.totalAmount || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Created By:</span>
+                                        <span>{proposal.createdByUser || 'System'}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                            <div className="px-1.5 pb-1.5 flex justify-end gap-1">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-5 w-5" 
+                                    onClick={() => router.push(`/proposals/${proposal.id}`)}
+                                >
+                                    <Eye className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                                {proposal.status === ProposalStatus.DRAFT && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-5 w-5"
+                                        onClick={() => router.push(`/proposals/${proposal.id}/edit`)}
+                                    >
+                                        <Edit className="h-3 w-3 text-blue-600" />
+                                    </Button>
+                                )}
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-5 w-5"
+                                    onClick={() => window.open(`/api/proposals/${proposal.id}/pdf`, '_blank')}
+                                >
+                                    <FileText className="h-3 w-3 text-orange-600" />
+                                </Button>
+                                {proposal.status === ProposalStatus.DRAFT && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-5 w-5"
+                                        onClick={() => setDeleteId(proposal.id)}
+                                    >
+                                        <Trash2 className="h-3 w-3 text-red-600" />
+                                    </Button>
+                                )}
+                            </div>
+                        </Card>
+                    ))
+                )}
+            </div>
 
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent>

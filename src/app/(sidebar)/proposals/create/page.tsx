@@ -165,7 +165,7 @@ export default function CreateProposalPage() {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[400px] p-0">
+                                    <PopoverContent className="w-[300px] sm:w-[400px] p-0" align="start">
                                         <Command>
                                             <CommandInput placeholder="Search enquiry..." onValueChange={(val) => fetchEnquiries(val)} />
                                             <CommandList>
@@ -260,9 +260,12 @@ export default function CreateProposalPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {fields.map((field, index) => (
-                                <div key={field.id} className="flex gap-4 items-start">
-                                    <div className="flex-1 grid gap-2">
-                                        <Label className={index !== 0 ? 'sr-only' : ''}>Description</Label>
+                                <div key={field.id} className={cn(
+                                    "flex flex-col md:flex-row gap-4 items-start",
+                                    "p-4 border rounded-lg bg-gray-50/50 md:p-0 md:border-0 md:bg-transparent md:rounded-none"
+                                )}>
+                                    <div className="flex-1 grid gap-2 w-full">
+                                        <Label className={index !== 0 ? 'md:sr-only' : ''}>Description</Label>
                                         <Input
                                             placeholder="Item description"
                                             {...form.register(`items.${index}.description`)}
@@ -271,30 +274,38 @@ export default function CreateProposalPage() {
                                             <p className="text-sm text-red-500">{form.formState.errors.items[index]?.description?.message}</p>
                                         )}
                                     </div>
-                                    <div className="w-24 grid gap-2">
-                                        <Label className={index !== 0 ? 'sr-only' : ''}>Qty</Label>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
-                                        />
-                                    </div>
-                                    <div className="w-32 grid gap-2">
-                                        <Label className={index !== 0 ? 'sr-only' : ''}>Unit Price</Label>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                                        />
-                                    </div>
-                                    <div className="w-32 grid gap-2 text-right">
-                                        <Label className={index !== 0 ? 'sr-only' : ''}>Total</Label>
-                                        <div className="h-10 flex items-center justify-end font-medium">
-                                            {(items[index]?.quantity || 0) * (items[index]?.unitPrice || 0)}
+                                    
+                                    <div className="flex gap-4 w-full md:w-auto">
+                                        <div className="flex-1 md:w-24 grid gap-2">
+                                            <Label className={index !== 0 ? 'md:sr-only' : ''}>Qty</Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
+                                            />
+                                        </div>
+                                        <div className="flex-1 md:w-32 grid gap-2">
+                                            <Label className={index !== 0 ? 'md:sr-only' : ''}>Unit Price</Label>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                                            />
                                         </div>
                                     </div>
-                                    <div className={index === 0 ? 'pt-8' : ''}>
+
+                                    <div className="w-full md:w-32 grid gap-2 text-right">
+                                        <Label className={cn("text-left md:text-right", index !== 0 ? 'md:sr-only' : '')}>Total</Label>
+                                        <div className="h-10 flex items-center justify-between md:justify-end px-3 border rounded-md bg-white md:border-0 md:bg-transparent md:px-0">
+                                            <span className="md:hidden text-muted-foreground text-sm">Subtotal:</span>
+                                            <div className="font-medium">
+                                                {(items[index]?.quantity || 0) * (items[index]?.unitPrice || 0)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className={cn("flex justify-end w-full md:w-auto", index === 0 ? 'md:pt-8' : '')}>
                                         <Button
                                             type="button"
                                             variant="ghost"

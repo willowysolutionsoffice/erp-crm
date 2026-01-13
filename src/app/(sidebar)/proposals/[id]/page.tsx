@@ -117,30 +117,30 @@ export default function ProposalDetailPage() {
 
     return (
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-5xl mx-auto w-full">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="outline" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-3xl font-bold text-gray-900">{proposal.proposalNo}</h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{proposal.proposalNo}</h1>
                             <Badge className={getStatusColor(proposal.status)}>{proposal.status}</Badge>
                         </div>
-                        <p className="text-gray-600">Created on {new Date(proposal.createdAt).toLocaleDateString()}</p>
+                        <p className="text-sm md:text-base text-gray-600">Created on {new Date(proposal.createdAt).toLocaleDateString()}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => window.location.href = `/api/proposals/${id}/pdf?download=true`}>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" className="flex-1 md:flex-none" onClick={() => window.location.href = `/api/proposals/${id}/pdf?download=true`}>
                         <FileText className="mr-2 h-4 w-4" />
                         PDF
                     </Button>
-                    <div className="w-[180px]">
+                    <div className="flex-1 md:w-[180px] min-w-[140px]">
                         <Select
                             value={proposal.status}
                             onValueChange={(value) => handleStatusChange(value as ProposalStatus)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -153,7 +153,7 @@ export default function ProposalDetailPage() {
                         </Select>
                     </div>
                     {proposal.status === ProposalStatus.DRAFT && (
-                         <Button variant="outline" onClick={() => router.push(`/proposals/${id}/edit`)}>
+                         <Button variant="outline" className="flex-1 md:flex-none" onClick={() => router.push(`/proposals/${id}/edit`)}>
                              <Edit className="mr-2 h-4 w-4" />
                              Edit
                          </Button>
@@ -170,7 +170,8 @@ export default function ProposalDetailPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="relative w-full overflow-auto">
-                                <table className="w-full caption-bottom text-sm text-left">
+                                {/* Desktop Table */}
+                                <table className="hidden md:table w-full caption-bottom text-sm text-left">
                                     <thead className="[&_tr]:border-b">
                                         <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                             <th className="h-12 px-4 align-middle font-medium text-muted-foreground w-[50%]">Description</th>
@@ -196,6 +197,32 @@ export default function ProposalDetailPage() {
                                         )}
                                     </tbody>
                                 </table>
+
+                                {/* Mobile List */}
+                                <div className="md:hidden grid gap-4 p-4">
+                                     {proposal.items && proposal.items.length > 0 ? (
+                                        proposal.items.map((item) => (
+                                            <div key={item.id} className="border rounded-lg p-3 space-y-2 bg-muted/10">
+                                                <div className="font-medium text-sm">{item.description}</div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-muted-foreground">Quantity:</span>
+                                                    <span>{item.quantity}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-muted-foreground">Unit Price:</span>
+                                                    <span>{formatCurrency(item.unitPrice)}</span>
+                                                </div>
+                                                <Separator className="my-1" />
+                                                <div className="flex justify-between font-medium text-sm">
+                                                    <span>Total:</span>
+                                                    <span>{formatCurrency(item.total || (item.quantity * item.unitPrice))}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                     ) : (
+                                        <div className="text-center text-muted-foreground py-4">No items found</div>
+                                     )}
+                                </div>
                             </div>
                             <div className="flex justify-end p-4">
                                 <div className="flex gap-8 text-lg font-semibold">
